@@ -1,12 +1,10 @@
-// tailwind.config.js
-import { defineConfig } from "vite";
-
-export default {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
       colors: {
-        meshtastic: "#00c853", // verde ufficiale
+        meshtastic: "#5b21b6", // viola custom per branding
       },
     },
   },

@@ -76,6 +76,9 @@ class WiFiConfig(BaseModel):
     broker_host: str | None = None
     broker_port: int | None = None
 
+class RequestLocation(BaseModel):
+    node_id: str
+
 # ────────────────────────────────────────────────────────────────────────────
 # Health check
 # ────────────────────────────────────────────────────────────────────────────
@@ -139,13 +142,16 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
     finally:
         await ws.close()
 
-@app.get("/request-location/{node_id}")
-async def request_location(node_id: str, svc=Depends(get_mqtt_service)):
-    topic = f"mesh/request/{node_id}/location"
+# ────────────────────────────────────────────────────────────────────────────
+# Request location (POST)
+# ────────────────────────────────────────────────────────────────────────────
+@app.post("/request-location")
+async def request_location(data: RequestLocation, svc=Depends(get_mqtt_service)):
+    topic = f"mesh/request/{data.node_id}/location"
     payload = json.dumps({"cmd": "request_position"})
     if svc.client:
         await svc.client.publish(topic, payload.encode())
-        logger.info("Comando 'request_position' inviato a %s su topic %s", node_id, topic)
+        logger.info("Comando 'request_position' inviato a %s su topic %s", data.node_id, topic)
     else:
         logger.error("MQTT client non inizializzato, impossibile inviare comando.")
-    return {"status": "ok", "requested": node_id}
+    return {"status": "ok", "requested": data.node_id}

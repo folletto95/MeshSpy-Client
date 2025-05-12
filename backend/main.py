@@ -41,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(ws_logs.router)
+#app.include_router(ws_logs.router)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Prometheus metrics

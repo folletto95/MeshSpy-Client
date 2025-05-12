@@ -8,6 +8,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
+// Configura le icone Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -19,7 +20,7 @@ export default function MapView() {
   const { data: rawNodes } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
-  const fallbackPosition = [42.5, 12.5];
+  const fallbackPosition = [42.5, 12.5]; // Default: centro Italia
 
   if (!rawNodes) {
     return (
@@ -62,21 +63,14 @@ export default function MapView() {
         />
         {nodes.map((n) => (
           <Marker
-          key={n.id}
-          position={[n.lat, n.lon]}
-          ref={(markerInstance) => {
-            if (markerInstance) {
-              // Accesso corretto al marker Leaflet
-              const leafletMarker = markerInstance?.getElement?.()
-                ? markerInstance
-                : markerInstance?.leafletElement ?? null;
-        
-              if (leafletMarker) {
-                markersRef.current[n.id] = leafletMarker;
+            key={n.id}
+            position={[n.lat, n.lon]}
+            ref={(marker) => {
+              if (marker && marker.getLatLng) {
+                markersRef.current[n.id] = marker;
               }
-            }
-          }}
-        >
+            }}
+          >
             <Popup>
               <div className="font-semibold">{n.name}</div>
               <div className="text-sm text-gray-500">

@@ -28,20 +28,25 @@ export default function Sidebar() {
     : [];
 
   const handleClick = async (node) => {
+    console.log("🖱️ Click su:", node);
+    addLogLine(`🖱️ Click su ${node.name} (hasPos=${node.hasPos})`);
+
     if (node.hasPos) {
       const marker = markersRef.current[node.id];
       if (marker && mapRef.current) {
         const latlng = marker.getLatLng();
+        addLogLine(`📍 Zoom su ${node.name} (${latlng.lat}, ${latlng.lng})`);
         mapRef.current.setView(latlng, 14, { animate: true });
         marker.openPopup();
-        addLogLine(`Zoom su nodo ${node.name}`);
+      } else {
+        addLogLine(`❌ Marker non trovato per ${node.name}`);
       }
     } else {
       try {
-        addLogLine(`Richiesta posizione per nodo ${node.id} (${node.name})`);
+        addLogLine(`📡 Richiesta posizione per nodo ${node.id} (${node.name})`);
         await fetch(`/request-location/${node.id}`, { method: "POST" });
       } catch (err) {
-        addLogLine(`Errore richiesta posizione nodo ${node.id}: ${err.message}`);
+        addLogLine(`❌ Errore richiesta posizione nodo ${node.id}: ${err.message}`);
       }
     }
   };
@@ -57,12 +62,12 @@ export default function Sidebar() {
           <div className="px-4 py-2 text-gray-400">Nessun nodo disponibile</div>
         ) : (
           nodes.map((n) => (
-            <div
+            <button
               key={n.id}
-              className="flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded cursor-pointer"
               onClick={() => handleClick(n)}
+              className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded text-left"
             >
-              <span className="flex-1 truncate flex items-center gap-2">
+              <span className="flex-1 truncate flex items-center gap-2 text-white">
                 {n.hasPos && <MapPin className="w-4 h-4 text-white/70" />}
                 {n.name}
               </span>
@@ -70,7 +75,7 @@ export default function Sidebar() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
               </span>
-            </div>
+            </button>
           ))
         )}
       </nav>

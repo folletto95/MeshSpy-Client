@@ -1,16 +1,18 @@
 import useSWR from "swr";
 
-// Try env var first; if undefined, fall back to window.location (host + port 8000)
+// Usa variabile d'ambiente o fallback su localhost:8000
 const API =
   import.meta.env.VITE_API ||
   `${window.location.protocol}//${window.location.hostname}:8000`;
 
+// Fetcher comune per tutte le API
 export const fetcher = (url) =>
   fetch(API + url).then((r) => {
     if (!r.ok) throw new Error(`Fetch error ${r.status} for ${API + url}`);
     return r.json();
   });
 
+// Hook per ottenere la lista dei nodi
 export function useNodes() {
   return useSWR("/nodes", fetcher, {
     refreshInterval: 5000,
@@ -18,6 +20,7 @@ export function useNodes() {
   });
 }
 
+// Hook per ottenere metriche (se supportate)
 export function useMetrics() {
   return useSWR("/metrics", fetcher, {
     refreshInterval: 5000,
@@ -25,6 +28,7 @@ export function useMetrics() {
   });
 }
 
+// WebSocket logs
 export function openLogSocket(onLine) {
   const API =
     import.meta.env.VITE_API ||
@@ -34,6 +38,8 @@ export function openLogSocket(onLine) {
   ws.onmessage = (e) => onLine(e.data);
   return ws;
 }
+
+// Post per creare wifi.yaml
 export async function createWifiYaml(data) {
   const res = await fetch(API + "/wifi-config", {
     method: "POST",

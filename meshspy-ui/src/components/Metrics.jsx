@@ -56,4 +56,25 @@ export default function Metrics() {
       </div>
     </section>
   );
+}import { useMetrics } from "../lib/api";
+
+export default function Metrics() {
+  const { data } = useMetrics();
+
+  if (!data) {
+    return (
+      <section className="bg-white rounded-xl p-4 shadow">
+        <p className="text-gray-400">Caricamento metriche...</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-xl p-4 shadow">
+      <h2 className="text-lg font-semibold text-gray-600 mb-2">Metriche</h2>
+      <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </section>
+  );
 }

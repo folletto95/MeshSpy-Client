@@ -22,7 +22,7 @@ class NodeData(BaseModel):
     data: dict
 
 logger = logging.getLogger("meshspy.mqtt")
-logger.info(f"Nuovo nodo rilevato: {node_id}")
+
 logger.warning("Tipo messaggio sconosciuto (text)")
 
 env_path = find_dotenv(usecwd=True)
@@ -165,4 +165,5 @@ class MQTTService:
 async def get_mqtt_service() -> MQTTService:
     return mqtt_service
 
+logger.info(f"Nuovo nodo rilevato: {node_id}")
 mqtt_service = MQTTService()

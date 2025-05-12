@@ -31,7 +31,7 @@ export default function MapView() {
 
   const nodes = Object.entries(rawNodes)
     .map(([id, info]) => {
-      const payload = info.data?.payload || {};
+      const payload = info.data?.data?.payload || {};
       const lat = payload.latitude_i ? payload.latitude_i / 1e7 : null;
       const lon = payload.longitude_i ? payload.longitude_i / 1e7 : null;
       return lat && lon ? { id, name: info.name, lat, lon } : null;

@@ -72,9 +72,9 @@ export default function Sidebar() {
             >
               <span className="flex-1 truncate flex items-center gap-2 text-white">
                 {n.hasPos ? (
-                  <MapPin className="w-4 h-4 text-meshtastic" />
+                  <MapPin className="w-4 h-4 text-white drop-shadow" />
                 ) : (
-                  <MapPinOff className="w-4 h-4 text-gray-400" />
+                  <MapPinOff className="w-4 h-4 text-white/30" />
                 )}
                 {n.name}
               </span>

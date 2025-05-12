@@ -1,0 +1,12 @@
+# Esempi d'uso:
+# Mostra info del nodo:
+./run_client.sh --show-info
+
+# Invia un messaggio:
+./run_client.sh --send-text "Ciao rete mesh!"
+
+# Imposta nome:
+./run_client.sh --set-owner "Mario Rossi" MR
+
+# Inoltra pacchetti a server:
+./run_client.sh --server-url "http://example.com/api/mesh"

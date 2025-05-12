@@ -161,9 +161,10 @@ class MQTTService:
 
         name = str(self.name_map.get(node_id, node_id))
         self.nodes[node_id] = NodeData(name=name, data=data)
+        logger.info(f"Nuovo nodo rilevato: {node_id}")
 
 async def get_mqtt_service() -> MQTTService:
     return mqtt_service
 
-logger.info(f"Nuovo nodo rilevato: {node_id}")
+
 mqtt_service = MQTTService()

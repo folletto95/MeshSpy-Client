@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+paho-mqtt
+python-dotenv
+sqlmodel
+asyncpg
+paho-mqtt
+aiomqtt
+pydantic-settings
+prometheus-client

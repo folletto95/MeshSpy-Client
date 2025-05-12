@@ -1,0 +1,15 @@
+from pydantic import BaseModel
+
+class Node(BaseModel):
+    id: str
+    name: str
+    lat: float
+    lon: float
+    ele: float | None = None         # altitudine
+    accuracy: float | None = None    # accuratezza GPS
+    online: bool = True
+    firmware: str | None = None      # versione firmware da nodeinfo
+    variant: str | None = None       # variante hardware da nodeinfo
+
+# parte vuota: verrà popolato via MQTT
+nodes: dict[str, Node] = {}

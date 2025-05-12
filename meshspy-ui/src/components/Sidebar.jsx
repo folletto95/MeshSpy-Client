@@ -43,7 +43,11 @@ export default function Sidebar() {
     } else {
       try {
         addLogLine(`📡 Richiesta posizione per nodo ${node.id} (${node.name})`);
-        await fetch(`/request-location/${node.id}`, { method: "POST" });
+        await fetch("/request-location", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ node_id: node.id }),
+        });
       } catch (err) {
         addLogLine(`❌ Errore richiesta posizione nodo ${node.id}: ${err.message}`);
       }

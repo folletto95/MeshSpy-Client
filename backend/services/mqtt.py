@@ -6,7 +6,7 @@ import json
 import os
 from contextlib import AsyncExitStack
 from typing import Any, Dict
-
+from pydantic import BaseModel
 from dotenv import find_dotenv, load_dotenv
 from aiomqtt import Client, MqttError
 

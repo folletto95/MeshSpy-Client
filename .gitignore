@@ -40,3 +40,4 @@ package-lock.json
 
 # Windows
 Thumbs.db
+.zip

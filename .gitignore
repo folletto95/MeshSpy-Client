@@ -28,6 +28,7 @@ nosetests.xml
 coverage.xml
 package-lock.json
 *,cover
+frontend_files/
 
 # IDE / editor settings
 .vscode/

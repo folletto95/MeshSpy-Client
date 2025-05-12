@@ -8,6 +8,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
+// Configura l'icona di default
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -34,7 +35,7 @@ export default function MapView() {
       const payload = info.data?.data?.payload || {};
       const lat = payload.latitude_i ? payload.latitude_i / 1e7 : null;
       const lon = payload.longitude_i ? payload.longitude_i / 1e7 : null;
-      return lat && lon ? { id, name: info.name, lat, lon } : null;
+      return lat && lon ? { id, name: info.name ?? id, lat, lon } : null;
     })
     .filter(Boolean);
 

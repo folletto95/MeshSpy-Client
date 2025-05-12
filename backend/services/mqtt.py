@@ -17,7 +17,6 @@ from backend.services.db import (
     store_event,
 )
 
-
 class NodeData(BaseModel):
     name: str
     data: dict

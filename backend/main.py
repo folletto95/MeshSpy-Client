@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -30,9 +32,17 @@ logging.basicConfig(
 logger = logging.getLogger("meshspy.main")
 
 # ────────────────────────────────────────────────────────────────────────────
-# FastAPI app
+# FastAPI app with lifespan
 # ────────────────────────────────────────────────────────────────────────────
-app = FastAPI(title="MeshSpy API", version="0.0.1")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(mqtt_service.start())
+    logger.info("MQTT listener avviato in background")
+    yield
+    await mqtt_service.stop()
+    logger.info("MQTT listener fermato")
+
+app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,8 +50,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-#app.include_router(ws_logs.router)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Prometheus metrics
@@ -58,19 +66,6 @@ async def metrics() -> PlainTextResponse:
 async def root() -> FileResponse:
     index = ROOT_DIR / "static" / "index.html"
     return FileResponse(index) if index.exists() else PlainTextResponse("MeshSpy API")
-
-# ────────────────────────────────────────────────────────────────────────────
-# Lifespan events: MQTT start/stop
-# ────────────────────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def on_startup() -> None:
-    asyncio.create_task(mqtt_service.start())
-    logger.info("MQTT listener avviato in background")
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    await mqtt_service.stop()
-    logger.info("MQTT listener fermato")
 
 # ────────────────────────────────────────────────────────────────────────────
 # Pydantic models
@@ -120,7 +115,7 @@ async def wifi_config(cfg: WiFiConfig) -> dict[str, str]:
     return {"b64": b64}
 
 # ────────────────────────────────────────────────────────────────────────────
-# WebSocket streaming boh
+# WebSocket streaming
 # ────────────────────────────────────────────────────────────────────────────
 @app.websocket("/ws/nodes")
 async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
@@ -143,7 +138,6 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
         logger.warning("WebSocket chiuso: %s", exc)
     finally:
         await ws.close()
-
 
 @app.get("/request-location/{node_id}")
 async def request_location(node_id: str, svc=Depends(get_mqtt_service)):

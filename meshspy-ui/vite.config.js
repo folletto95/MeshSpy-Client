@@ -1,30 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // In produzione non serve il dev‐server proxy:
-  // lasciamo che il reverse-proxy (Nginx, Caddy, ecc.) gestisca /nodes, /metrics, /ws.
-  //
-  // SE vuoi ancora sviluppare con Vite e proxy, decommenta qui sotto:
-  //
-  // server: {
-  //   host: true,           // ascolta su 0.0.0.0
-  //   port: 5173,
-  //   allowedHosts: "all",
-  //   proxy: {
-  //     "/nodes": {
-  //       target: "http://localhost:8000",
-  //       changeOrigin: true,
-  //     },
-  //     "/metrics": {
-  //       target: "http://localhost:8000",
-  //       changeOrigin: true,
-  //     },
-  //     "/ws": {
-  //       target: "ws://localhost:8000",
-  //       ws: true,
-  //     },
-  //   },
-  // },
+  server: {
+    port: 5173,
+    proxy: {
+      "/nodes": "http://localhost:8000",
+      "/metrics": "http://localhost:8000",
+      "/request-location": "http://localhost:8000",
+      "/wifi-config": "http://localhost:8000",
+      "^/ws/.*": {
+        target: "ws://localhost:8000",
+        ws: true,
+      },
+    },
+  },
 });

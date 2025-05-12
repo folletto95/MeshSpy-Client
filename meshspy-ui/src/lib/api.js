@@ -26,12 +26,14 @@ export function useMetrics() {
 }
 
 export function openLogSocket(onLine) {
+  const API =
+    import.meta.env.VITE_API ||
+    `${window.location.protocol}//${window.location.hostname}:8000`;
   const wsUrl = `${API.replace(/^http/, "ws")}/ws/logs`;
   const ws = new WebSocket(wsUrl);
   ws.onmessage = (e) => onLine(e.data);
   return ws;
 }
-
 export async function createWifiYaml(data) {
   const res = await fetch(API + "/wifi-config", {
     method: "POST",

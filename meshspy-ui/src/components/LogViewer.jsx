@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { openLogSocket } from "../lib/api";
 
-// funzione per log client-side esportabile
+// Variabile globale per log client-side
 let appendLogLine = null;
 
 export function addLogLine(line) {
@@ -16,13 +16,16 @@ export default function LogViewer() {
   const [lines, setLines] = useState([]);
 
   useEffect(() => {
-    appendLogLine = (line) => {
+    appendLogLine = (line) =>
       setLines((prev) => [...prev.slice(-49), line]);
-    };
 
-    const ws = openLogSocket((line) => {
-      setLines((prev) => [...prev.slice(-49), line]);
-    });
+    const ws = openLogSocket((line) =>
+      setLines((prev) => [...prev.slice(-49), line])
+    );
+
+    ws.onerror = (e) => {
+      appendLogLine(`[client] errore WebSocket: ${e.message}`);
+    };
 
     return () => {
       ws.close();

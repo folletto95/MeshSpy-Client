@@ -4,8 +4,8 @@ import json
 import os
 from contextlib import AsyncExitStack
 from typing import Any, Dict
-from pydantic import BaseModel
 
+from pydantic import BaseModel, ValidationError
 from dotenv import find_dotenv, load_dotenv
 from aiomqtt import Client, MqttError
 
@@ -17,13 +17,13 @@ from backend.services.db import (
     store_event,
 )
 
+
 class NodeData(BaseModel):
     name: str
     data: dict
 
-logger = logging.getLogger("meshspy.mqtt")
 
-logger.warning("Tipo messaggio sconosciuto (text)")
+logger = logging.getLogger("meshspy.mqtt")
 
 env_path = find_dotenv(usecwd=True)
 if not env_path:
@@ -37,6 +37,7 @@ BROKER_PASSWORD = os.getenv("MQTT_PASSWORD", "")
 TOPICS          = os.getenv("MQTT_TOPICS", "#").split(",")
 
 logger.debug("Caricate da .env: HOST=%s PORT=%s USER=%r", BROKER_HOST, BROKER_PORT, BROKER_USERNAME)
+
 
 class MQTTService:
     def __init__(self) -> None:
@@ -84,9 +85,14 @@ class MQTTService:
 
         try:
             payload_str = payload.decode("utf-8")
+        except UnicodeDecodeError as e:
+            logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic_str, e)
+            return
+
+        try:
             data = json.loads(payload_str)
-        except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            logger.warning("Errore nel parsing del messaggio MQTT su %s: %s", topic_str, e)
+        except json.JSONDecodeError as e:
+            logger.warning("Errore nel parsing JSON del messaggio MQTT su %s: %s", topic_str, e)
             return
 
         node_id = data.get("from")
@@ -102,66 +108,61 @@ class MQTTService:
         msg_type = data.get("type")
         payload_obj = data.get("payload", {})
 
-        if msg_type == "sendtext":
-            logger.info("Messaggio testo da %s a %s: %s", node_id, data.get("to"), payload_obj)
+        try:
+            if msg_type == "sendtext":
+                logger.info("Messaggio testo da %s a %s: %s", node_id, data.get("to"), payload_obj)
 
-        elif msg_type == "sendposition":
-            try:
+            elif msg_type == "sendposition":
                 lat = payload_obj["latitude_i"] / 1e7
                 lon = payload_obj["longitude_i"] / 1e7
                 update_position(node_id, lat, lon)
                 logger.info("Posizione aggiornata per %s: lat=%s lon=%s", node_id, lat, lon)
-            except (KeyError, TypeError):
-                logger.warning("Dati posizione non validi da %s: %s", node_id, payload_obj)
 
-        elif msg_type == "telemetry":
-            logger.info("Telemetria da %s: %s", node_id, payload_obj)
+            elif msg_type == "telemetry":
+                logger.info("Telemetria da %s: %s", node_id, payload_obj)
 
-        elif msg_type == "nodeinfo":
-            short = payload_obj.get("shortname", "")
-            longn = payload_obj.get("longname", "")
-            upsert_nodeinfo(node_id, short, longn, node_id)
-            realname = longn or short or str(node_id)
-            self.name_map[node_id] = realname
-            logger.info("Aggiornato nodeinfo per %s → %s", node_id, realname)
+            elif msg_type == "nodeinfo":
+                short = payload_obj.get("shortname", "")
+                longn = payload_obj.get("longname", "")
+                upsert_nodeinfo(node_id, short, longn, node_id)
+                realname = longn or short or str(node_id)
+                self.name_map[node_id] = realname
+                logger.info("Aggiornato nodeinfo per %s → %s", node_id, realname)
 
-        elif msg_type == "waypoint":
-            try:
+            elif msg_type == "waypoint":
                 lat = payload_obj["latitude_i"] / 1e7
                 lon = payload_obj["longitude_i"] / 1e7
                 logger.info("Waypoint da %s: %s (%s, %s)", node_id, payload_obj.get("name"), lat, lon)
-            except (KeyError, TypeError):
-                logger.warning("Dati waypoint non validi da %s: %s", node_id, payload_obj)
 
-        elif msg_type == "neighborinfo":
-            neighbors = payload_obj.get("neighbors", [])
-            logger.info("Nodi vicini visti da %s: %s", node_id, neighbors)
+            elif msg_type == "neighborinfo":
+                neighbors = payload_obj.get("neighbors", [])
+                logger.info("Nodi vicini visti da %s: %s", node_id, neighbors)
 
-        elif msg_type == "traceroute":
-            route = payload_obj.get("route", [])
-            logger.info("Traceroute da %s: %s", node_id, route)
+            elif msg_type == "traceroute":
+                route = payload_obj.get("route", [])
+                logger.info("Traceroute da %s: %s", node_id, route)
 
-        elif msg_type == "detectionsensor":
-            logger.info("Rilevamento da sensore %s: %s", payload_obj.get("sensor_type"), payload_obj.get("value"))
+            elif msg_type == "detectionsensor":
+                logger.info("Rilevamento da sensore %s: %s", payload_obj.get("sensor_type"), payload_obj.get("value"))
 
-        elif msg_type == "paxcounter":
-            logger.info("PAX da %s: Wi-Fi=%s BLE=%s", node_id, payload_obj.get("wifi_count"), payload_obj.get("ble_count"))
+            elif msg_type == "paxcounter":
+                logger.info("PAX da %s: Wi-Fi=%s BLE=%s", node_id, payload_obj.get("wifi_count"), payload_obj.get("ble_count"))
 
-        elif msg_type == "remotehardware":
-            logger.info("Comando hardware remoto da %s: %s su %s", node_id, payload_obj.get("command"), payload_obj.get("target"))
+            elif msg_type == "remotehardware":
+                logger.info("Comando hardware remoto da %s: %s su %s", node_id, payload_obj.get("command"), payload_obj.get("target"))
 
-        else:
-            logger.info("Tipo messaggio sconosciuto (%s) da %s", msg_type, node_id)
-            logger.debug("Contenuto completo: %s", json.dumps(payload_obj, indent=2))
+            else:
+                logger.info("Tipo messaggio sconosciuto (%s) da %s", msg_type, node_id)
+                logger.debug("Contenuto completo: %s", json.dumps(payload_obj, indent=2))
+
+        except Exception as e:
+            logger.warning("Errore nella gestione del messaggio %s da %s: %s", msg_type, node_id, e)
 
         store_event(node_id, msg_type or topic_str.rsplit("/", 1)[-1], payload_str)
 
-        # ✅ Qui ora usiamo old_data correttamente
-        old_data = self.nodes.get(node_id)
-
         name = str(self.name_map.get(node_id, node_id))
         self.nodes[node_id] = NodeData(name=name, data=data)
-        logger.info(f"Nuovo nodo rilevato: {node_id}")
+
 
 async def get_mqtt_service() -> MQTTService:
     return mqtt_service

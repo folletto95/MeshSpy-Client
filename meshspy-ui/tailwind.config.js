@@ -4,7 +4,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        meshtastic: "#5b21b6", // viola custom per branding
+        meshtastic: "#27ae60", // Verde acceso stile Meshtastic
       },
     },
   },

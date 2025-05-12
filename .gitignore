@@ -30,6 +30,7 @@ package-lock.json
 *,cover
 frontend_files/
 
+
 # IDE / editor settings
 .vscode/
 .idea/
@@ -41,4 +42,3 @@ frontend_files/
 
 # Windows
 Thumbs.db
-.zip

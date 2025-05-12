@@ -1,6 +1,6 @@
 import { useNodes } from "../lib/api";
 import { useMapContext } from "../lib/MapContext";
-import { Radio, MapPin } from "lucide-react";
+import { Radio, MapPin, MapPinOff } from "lucide-react";
 import { addLogLine } from "./LogViewer";
 
 export default function Sidebar() {
@@ -28,16 +28,15 @@ export default function Sidebar() {
     : [];
 
   const handleClick = async (node) => {
-    console.log("🖱️ Click su:", node);
     addLogLine(`🖱️ Click su ${node.name} (hasPos=${node.hasPos})`);
 
     if (node.hasPos) {
       const marker = markersRef.current[node.id];
       if (marker && mapRef.current) {
         const latlng = marker.getLatLng();
-        addLogLine(`📍 Zoom su ${node.name} (${latlng.lat}, ${latlng.lng})`);
         mapRef.current.setView(latlng, 14, { animate: true });
         marker.openPopup();
+        addLogLine(`📍 Zoom su ${node.name}`);
       } else {
         addLogLine(`❌ Marker non trovato per ${node.name}`);
       }
@@ -68,7 +67,11 @@ export default function Sidebar() {
               className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded text-left"
             >
               <span className="flex-1 truncate flex items-center gap-2 text-white">
-                {n.hasPos && <MapPin className="w-4 h-4 text-white/70" />}
+                {n.hasPos ? (
+                  <MapPin className="w-4 h-4 text-meshtastic" />
+                ) : (
+                  <MapPinOff className="w-4 h-4 text-gray-400" />
+                )}
                 {n.name}
               </span>
               <span className="relative flex h-2 w-2 text-meshtastic">

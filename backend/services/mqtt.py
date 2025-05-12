@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from dotenv import find_dotenv, load_dotenv
 from aiomqtt import Client, MqttError
 
+from backend.logging_config import logger
 from backend.services.db import (
     register_node,
     upsert_nodeinfo,
@@ -21,6 +22,8 @@ class NodeData(BaseModel):
     data: dict
 
 logger = logging.getLogger("meshspy.mqtt")
+logger.info(f"Nuovo nodo rilevato: {node_id}")
+logger.warning("Tipo messaggio sconosciuto (text)")
 
 env_path = find_dotenv(usecwd=True)
 if not env_path:

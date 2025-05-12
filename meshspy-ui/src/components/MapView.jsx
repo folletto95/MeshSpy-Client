@@ -8,7 +8,6 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
-// Configura le icone Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -20,7 +19,7 @@ export default function MapView() {
   const { data: rawNodes } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
-  const fallbackPosition = [42.5, 12.5]; // Default: centro Italia
+  const fallbackPosition = [42.5, 12.5];
 
   if (!rawNodes) {
     return (
@@ -58,7 +57,7 @@ export default function MapView() {
         }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
+          attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {nodes.map((n) => (
@@ -72,10 +71,9 @@ export default function MapView() {
             }}
           >
             <Popup>
-              <div className="font-semibold">{n.name}</div>
-              <div className="text-sm text-gray-500">
-                {n.lat.toFixed(5)}, {n.lon.toFixed(5)}
-              </div>
+              <strong>{n.name}</strong>
+              <br />
+              {n.lat.toFixed(5)}, {n.lon.toFixed(5)}
             </Popup>
           </Marker>
         ))}

@@ -1,0 +1,35 @@
+L'errore 404 Not Found per la richiesta POST /request-location/1556607561 indica che stai cercando di accedere a un endpoint che non esiste nella forma POST /request-location/{node_id}.
+
+Nel file main.py aggiornato, l'endpoint corretto è definito come:
+
+python
+
+
+@app.post("/request-location")
+async def request_location(data: RequestLocation, svc=Depends(get_mqtt_service)):
+Questo significa che la richiesta deve essere inviata come POST a /request-location con un body JSON simile a questo:
+
+json
+
+
+{
+  "node_id": "1556607561"
+}
+Soluzioni:
+✅ Correggi la chiamata client (es. curl, fetch, axios, ecc.) per inviare:
+
+pgsql
+
+
+POST /request-location
+Content-Type: application/json
+
+{
+  "node_id": "1556607561"
+}
+❌ Non usare POST /request-location/1556607561 a meno che tu non abbia definito un endpoint con parametro path, tipo:
+
+python
+
+
+@app.post("/request-location/{node_id}")

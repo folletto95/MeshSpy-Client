@@ -1,0 +1,38 @@
+❌ 4. Metrica "nodi online: 0 / n"
+Problema:
+Probabilmente info.online non viene calcolato dal backend o è sempre false.
+
+🔧 Serve:
+
+lato backend: assegnare .online = True se il nodo ha mandato messaggi negli ultimi N minuti (come sopra)
+
+lato frontend: usare quella proprietà o ricavarla da un timestamp (last_seen)
+
+
+
+❓ 5. "Messaggi totali" — funziona?
+📦 Attualmente:
+
+🔸 Il backend salva eventi in store_event(...) (es: MQTT)
+
+❌ Ma non fornisce alcuna API /metrics con un conteggio
+
+🔧 Serve:
+
+creare un endpoint /metrics che conteggia gli eventi totali da DB o memoria
+
+
+
+
+❓ 6. Uptime medio — funziona?
+📦 Probabilmente no, a meno che il backend:
+
+tenga traccia di first_seen e last_seen per ogni nodo
+
+calcoli uptime = last - first
+
+🔧 Serve:
+
+backend: salvataggio timestamp primo/ultimo evento per nodo
+
+frontend: calcolo durata media

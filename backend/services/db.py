@@ -1,12 +1,9 @@
-# backend/services/db.py
-
 import sqlite3
 import os
 from threading import Lock
 
 _DB_PATH = "backend/data/nodes.db"
 _lock = Lock()
-
 
 def init_db():
     """Crea le tabelle nodes e nodes_history se non esistono."""
@@ -35,7 +32,6 @@ def init_db():
         """)
         conn.commit()
 
-
 def register_node(node_id: str, name: str):
     """
     Registra un nuovo nodo:
@@ -50,7 +46,6 @@ def register_node(node_id: str, name: str):
             ON CONFLICT(id) DO NOTHING
         """, (node_id, name))
         conn.commit()
-
 
 def get_display_name(id: str) -> str:
     """
@@ -71,8 +66,10 @@ def get_display_name(id: str) -> str:
                 return short
     return id
 
-
 def upsert_nodeinfo(id: str, short: str, long: str, name: str):
+    """
+    Aggiorna o inserisce i campi shortname/longname e registra l'evento.
+    """
     init_db()
     with _lock, sqlite3.connect(_DB_PATH) as conn:
         # 1) Assicura esistenza nodo
@@ -102,13 +99,17 @@ def upsert_nodeinfo(id: str, short: str, long: str, name: str):
             INSERT INTO nodes_history (id, event_type, data)
             VALUES (?, 'nodeinfo', ?)
         """, (id, f'{{"short": "{short}", "long": "{long}"}}'))
-        conn.commit()def update_position(id: str, x: float, y: float):
+        conn.commit()
+
+def update_position(id: str, x: float, y: float):
     """
     Aggiorna last_x, last_y e last_seen solo se la posizione è cambiata.
     """
     init_db()
     with _lock, sqlite3.connect(_DB_PATH) as conn:
-        cur = conn.execute("SELECT last_x, last_y FROM nodes WHERE id = ?", (id,))
+        cur = conn.execute(
+            "SELECT last_x, last_y FROM nodes WHERE id = ?", (id,)
+        )
         row = cur.fetchone()
 
         if not row or row[0] != x or row[1] != y:
@@ -121,7 +122,11 @@ def upsert_nodeinfo(id: str, short: str, long: str, name: str):
                 INSERT INTO nodes_history (id, event_type, data)
                 VALUES (?, 'position', ?)
             """, (id, f'{{"x": {x}, "y": {y}}}'))
-            conn.commit()def store_event(id: str, event_type: str, data: str):
+            conn.commit()
+
+    return {"status": "ok", "id": id, "x": x, "y": y}
+
+def store_event(id: str, event_type: str, data: str):
     """
     Storicizza ogni messaggio nella tabella nodes_history.
     """
@@ -132,17 +137,3 @@ def upsert_nodeinfo(id: str, short: str, long: str, name: str):
             VALUES (?, ?, ?)
         """, (id, event_type, data))
         conn.commit()
-
-if __name__ == "__main__":
-    # Test rapido
-    if os.path.exists(_DB_PATH):
-        os.remove(_DB_PATH)
-
-    register_node("node_1", "user123")
-    upsert_nodeinfo("node_1", "SN1", "Node Uno", "user123")
-    update_position("node_1", 12.34, 56.78)
-    store_event("node_1", "custom", '{"foo": "bar"}')
-
-    with sqlite3.connect(_DB_PATH) as conn:
-        print("Nodes:", conn.execute("SELECT * FROM nodes").fetchall())
-        print("History:", conn.execute("SELECT * FROM nodes_history").fetchall())

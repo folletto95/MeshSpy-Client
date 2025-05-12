@@ -29,7 +29,7 @@ coverage.xml
 package-lock.json
 *,cover
 frontend_files/
-
+zip/
 
 # IDE / editor settings
 .vscode/

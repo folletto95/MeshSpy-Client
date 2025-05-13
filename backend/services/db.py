@@ -5,8 +5,9 @@ from threading import Lock
 
 logging.basicConfig(level=logging.DEBUG)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "node.db")
+DB_DIR = os.path.expanduser("~/.meshspy_data")
+os.makedirs(DB_DIR, exist_ok=True)
+DB_PATH = os.path.join(DB_DIR, "node.db")
 _lock = Lock()
 
 def init_db():

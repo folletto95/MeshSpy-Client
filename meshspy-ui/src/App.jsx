@@ -4,7 +4,6 @@ import MapView from "./components/MapView";
 import Topbar from "./components/Topbar";
 import Metrics from "./components/Metrics";
 import LogViewer from "./components/LogViewer";
-import WifiDialog from "./components/WifiDialog";
 
 export default function App() {
   return (

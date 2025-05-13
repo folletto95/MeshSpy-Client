@@ -1,5 +1,7 @@
 import useSWR from "swr";
 
+const fetcher = (url) => fetch(url).then((res) => res.json());
+
 // Usa variabile d'ambiente o fallback su localhost:8000
 const API =
   import.meta.env.VITE_API ||
@@ -14,10 +16,15 @@ export const fetcher = (url) =>
 
 // Hook per ottenere la lista dei nodi
 export function useNodes() {
-  return useSWR("/nodes", fetcher, {
+  const { data, error } = useSWR("/api/nodes", fetcher, {
     refreshInterval: 5000,
-    revalidateOnFocus: true,
   });
+
+  return {
+    nodes: data || [],
+    isLoading: !error && !data,
+    isError: error,
+  };
 }
 
 // Hook per ottenere metriche (se supportate)

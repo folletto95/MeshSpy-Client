@@ -34,9 +34,19 @@ export default function MapView() {
   const nodes = Object.entries(rawNodes)
     .map(([id, info]) => {
       const payload = info.data?.data?.payload || {};
-      const lat = payload.latitude_i ? payload.latitude_i / 1e7 : null;
-      const lon = payload.longitude_i ? payload.longitude_i / 1e7 : null;
-      return lat && lon ? { id, name: info.name ?? id, lat, lon } : null;
+      const lat = typeof payload.latitude_i === "number" ? payload.latitude_i / 1e7 : null;
+      const lon = typeof payload.longitude_i === "number" ? payload.longitude_i / 1e7 : null;
+
+      if (lat !== null && lon !== null) {
+        return {
+          id,
+          name: info.name ?? id,
+          lat,
+          lon,
+        };
+      }
+
+      return null;
     })
     .filter(Boolean);
 
@@ -55,7 +65,7 @@ export default function MapView() {
         className="h-full w-full"
         whenCreated={(mapInstance) => {
           mapRef.current = mapInstance;
-          setIsReady(true); // ✅ Questa riga è fondamentale
+          setIsReady(true);
         }}
       >
         <TileLayer

@@ -1,10 +1,10 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+// tailwind.config.js
+export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
       colors: {
-        meshtastic: "#27ae60", // Verde acceso stile Meshtastic
+        meshtastic: "#00c853", // verde ufficiale
       },
     },
   },

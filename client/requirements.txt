@@ -1,0 +1,4 @@
+meshtastic
+pypubsub
+requests
+flask

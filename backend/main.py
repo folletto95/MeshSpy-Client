@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -19,7 +18,7 @@ from pydantic import BaseModel
 from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name
 from backend.routes import ws_logs
-from backend.api.ws_logs import router as ws_router
+
 # ────────────────────────────────────────────────────────────────────────────
 # .env & logging
 # ────────────────────────────────────────────────────────────────────────────
@@ -44,7 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
-app.include_router(ws_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

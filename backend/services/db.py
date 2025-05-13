@@ -11,6 +11,7 @@ DB_PATH = os.path.join(DB_DIR, "node.db")
 _lock = Lock()
 
 def init_db():
+    logging.debug(f"Usando database persistente in: {DB_PATH}")
     """Crea le tabelle nodes e nodes_history se non esistono."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with _lock, sqlite3.connect(DB_PATH) as conn:
@@ -116,6 +117,7 @@ def update_position(id: str, x: float, y: float):
 
 def store_event(id: str, event_type: str, data: str):
     init_db()
+    logging.debug(f"store_event() invocato per {id}: {event_type}")
     with _lock, sqlite3.connect(DB_PATH) as conn:
         conn.execute("""
             INSERT INTO nodes_history (id, event_type, data)

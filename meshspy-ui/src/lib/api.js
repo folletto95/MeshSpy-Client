@@ -13,6 +13,8 @@ export const fetcher = (url) =>
     if (!r.ok) throw new Error(`Fetch error ${r.status} for ${API + url}`);
     return r.json();
   });
+
+//
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 // Hook per ottenere la lista dei nodi
@@ -22,7 +24,7 @@ export function useNodes() {
   });
 
   return {
-    nodes: data || [],
+    nodes: data || {},
     isLoading: !error && !data,
     isError: error,
   };

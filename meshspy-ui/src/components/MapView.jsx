@@ -55,7 +55,7 @@ export default function MapView() {
         className="h-full w-full"
         whenCreated={(mapInstance) => {
           mapRef.current = mapInstance;
-          setIsReady(true);
+          setIsReady(true); // ✅ Questa riga è fondamentale
         }}
       >
         <TileLayer

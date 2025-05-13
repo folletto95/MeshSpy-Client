@@ -32,8 +32,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("meshspy.main")
 
-app.include_router(ws_router)
-
 # ────────────────────────────────────────────────────────────────────────────
 # FastAPI app with lifespan
 # ────────────────────────────────────────────────────────────────────────────
@@ -46,7 +44,7 @@ async def lifespan(app: FastAPI):
     logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
-
+app.include_router(ws_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

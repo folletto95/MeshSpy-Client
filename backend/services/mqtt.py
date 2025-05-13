@@ -15,6 +15,7 @@ from backend.services.db import (
     upsert_nodeinfo,
     update_position,
     store_event,
+    load_all_nodes,  # aggiunto
 )
 
 class NodeData(BaseModel):
@@ -42,7 +43,10 @@ class MQTTService:
         self._stack: AsyncExitStack | None = None
         self.client: Client | None = None
         self.name_map: Dict[str, str] = {}
-        self.nodes: Dict[str, NodeData] = {}
+        self.nodes: Dict[str, NodeData] = {
+            nid: NodeData(name=node["name"], data={"position": node.get("position", {})})
+            for nid, node in load_all_nodes().items()
+        }
 
     async def start(self) -> None:
         self._stack = AsyncExitStack()

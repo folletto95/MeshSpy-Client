@@ -142,4 +142,3 @@ def load_all_nodes() -> dict:
             }
             for row in cur.fetchall()
         }
-

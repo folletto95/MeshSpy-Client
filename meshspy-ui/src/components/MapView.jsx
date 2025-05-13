@@ -8,7 +8,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
-// Configura l'icona di default
+// Icone Leaflet standard
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -20,7 +20,7 @@ export default function MapView() {
   const { data: rawNodes } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
-  const fallbackPosition = [42.5, 12.5];
+  const fallbackPosition = [42.5, 12.5]; // Centro Italia
 
   if (!rawNodes) {
     return (
@@ -30,6 +30,7 @@ export default function MapView() {
     );
   }
 
+  // Estrai nodi con lat/lon
   const nodes = Object.entries(rawNodes)
     .map(([id, info]) => {
       const payload = info.data?.data?.payload || {};
@@ -67,7 +68,7 @@ export default function MapView() {
             position={[n.lat, n.lon]}
             ref={(marker) => {
               if (marker && marker.getLatLng) {
-                markersRef.current[n.id] = marker;
+                markersRef.current[String(n.id)] = marker;
               }
             }}
           >

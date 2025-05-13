@@ -17,7 +17,7 @@ export default function Sidebar() {
 
   const nodes = nodesData
     ? Object.entries(nodesData).map(([id, info]) => {
-      const payload = info.data?.data?.payload || {};
+        const payload = info.data?.data?.payload || {};
         const hasPos = !!(payload.latitude_i && payload.longitude_i);
         return {
           id,
@@ -31,7 +31,7 @@ export default function Sidebar() {
     addLogLine(`🖱️ Click su ${node.name} (hasPos=${node.hasPos})`);
 
     if (node.hasPos) {
-      const marker = markersRef.current[node.id];
+      const marker = markersRef.current[String(node.id)];
       if (marker && mapRef.current) {
         const latlng = marker.getLatLng();
         mapRef.current.setView(latlng, 14, { animate: true });

@@ -8,7 +8,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
-// Configura l'icona di default
+// Configurazione dell'icona standard Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -20,22 +20,27 @@ export default function MapView() {
   const { data: rawNodes } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
-  const fallbackPosition = [42.5, 12.5];
+  const fallbackPosition = [42.5, 12.5]; // centro Italia
 
   if (!rawNodes) {
     return (
       <div className="h-80 flex items-center justify-center text-gray-400">
-        Caricamento mappa…
+        Caricamento nodi...
       </div>
     );
   }
 
+  // Prepara i nodi con posizione valida
   const nodes = Object.entries(rawNodes)
     .map(([id, info]) => {
-      const payload = info.data?.data?.payload || {};
-      const lat = payload.latitude_i ? payload.latitude_i / 1e7 : null;
-      const lon = payload.longitude_i ? payload.longitude_i / 1e7 : null;
-      return lat && lon ? { id, name: info.name ?? id, lat, lon } : null;
+      const payload = info.data?.data?.payload;
+      const lat = typeof payload?.latitude_i === "number" ? payload.latitude_i / 1e7 : null;
+      const lon = typeof payload?.longitude_i === "number" ? payload.longitude_i / 1e7 : null;
+
+      if (lat !== null && lon !== null) {
+        return { id, name: info.name ?? id, lat, lon };
+      }
+      return null;
     })
     .filter(Boolean);
 
@@ -67,7 +72,8 @@ export default function MapView() {
             position={[n.lat, n.lon]}
             ref={(marker) => {
               if (marker && marker.getLatLng) {
-                markersRef.current[n.id] = marker;
+                markersRef.current[String(n.id)] = marker;
+                console.log("✅ Marker registrato per", n.name, marker.getLatLng());
               }
             }}
           >

@@ -47,7 +47,7 @@ class MQTTService:
             nid: NodeData(name=node["name"], data={"position": node.get("position", {})})
             for nid, node in load_all_nodes().items()
         }
-
+        
     async def start(self) -> None:
         self._stack = AsyncExitStack()
         try:

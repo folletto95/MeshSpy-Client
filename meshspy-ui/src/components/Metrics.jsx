@@ -1,4 +1,3 @@
-// meshspy-ui/src/components/Metrics.jsx
 import { RadioTower, Activity, Clock } from "lucide-react";
 import { useNodes } from "../lib/api";
 
@@ -32,7 +31,7 @@ export default function Metrics() {
         </div>
       </div>
 
-      {/* Messaggi totali (placeholder per future metrics) */}
+      {/* Messaggi totali */}
       <div className={metricStyle}>
         <Activity className="text-meshtastic" />
         <div>

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,7 @@ from pydantic import BaseModel
 from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name
 from backend.routes import ws_logs
-
+from backend.api.ws_logs import router as ws_router
 # ────────────────────────────────────────────────────────────────────────────
 # .env & logging
 # ────────────────────────────────────────────────────────────────────────────
@@ -30,6 +31,8 @@ logging.basicConfig(
     format="%(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("meshspy.main")
+
+app.include_router(ws_router)
 
 # ────────────────────────────────────────────────────────────────────────────
 # FastAPI app with lifespan

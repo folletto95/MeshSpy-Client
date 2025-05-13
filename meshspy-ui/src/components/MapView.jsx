@@ -8,7 +8,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
-//    Icone Leaflet standard
+// Configurazione dell'icona standard Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -20,32 +20,26 @@ export default function MapView() {
   const { data: rawNodes } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
-  const fallbackPosition = [42.5, 12.5]; // Centro Italia
+  const fallbackPosition = [42.5, 12.5]; // centro Italia
 
   if (!rawNodes) {
     return (
       <div className="h-80 flex items-center justify-center text-gray-400">
-        Caricamento mappa…
+        Caricamento nodi...
       </div>
     );
   }
 
-  // Estrai nodi con lat/lon
+  // Prepara i nodi con posizione valida
   const nodes = Object.entries(rawNodes)
     .map(([id, info]) => {
-      const payload = info.data?.data?.payload || {};
-      const lat = typeof payload.latitude_i === "number" ? payload.latitude_i / 1e7 : null;
-      const lon = typeof payload.longitude_i === "number" ? payload.longitude_i / 1e7 : null;
+      const payload = info.data?.data?.payload;
+      const lat = typeof payload?.latitude_i === "number" ? payload.latitude_i / 1e7 : null;
+      const lon = typeof payload?.longitude_i === "number" ? payload.longitude_i / 1e7 : null;
 
       if (lat !== null && lon !== null) {
-        return {
-          id,
-          name: info.name ?? id,
-          lat,
-          lon,
-        };
+        return { id, name: info.name ?? id, lat, lon };
       }
-
       return null;
     })
     .filter(Boolean);
@@ -79,7 +73,7 @@ export default function MapView() {
             ref={(marker) => {
               if (marker && marker.getLatLng) {
                 markersRef.current[String(n.id)] = marker;
-                console.log("Registrato marker per", n.id, marker);
+                console.log("✅ Marker registrato per", n.name, marker.getLatLng());
               }
             }}
           >

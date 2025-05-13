@@ -100,8 +100,9 @@ class MQTTService:
         self.nodes[node_id] = NodeData(name=name, data=data)
 
         # Salva/aggiorna info nodo
-        register_node(node_id)
-        upsert_nodeinfo(node_id, name)
+        node_id = data.get("from")
+        name = self.name_map.get(node_id, node_id)
+        register_node(node_id, name)
 
         # Gestione messaggi di posizione
         if "position" in data:

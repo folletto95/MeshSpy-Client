@@ -17,7 +17,7 @@ export default function Sidebar() {
 
   const nodes = nodesData
     ? Object.entries(nodesData).map(([id, info]) => {
-        const payload = info.data?.data?.payload || {};
+        const payload = info.data?.payload || {};
         const hasPos = !!(payload.latitude_i && payload.longitude_i);
         return {
           id,
@@ -28,31 +28,29 @@ export default function Sidebar() {
     : [];
 
   const handleClick = async (node) => {
-    addLogLine(`🖱️ Click su ${node.name} (hasPos=${node.hasPos})`);
+    console.log("🖱️ Click su", node.name, `(hasPos=${node.hasPos})`);
+
+    if (!isReady) {
+      console.warn("⏳ Mappa non ancora pronta");
+      addLogLine("⏳ Mappa non ancora pronta");
+      return;
+    }
 
     if (node.hasPos) {
-      if (!isReady || !mapRef.current) {
-        addLogLine("⏳ Mappa non ancora pronta");
-        return;
-      }
-
-      const marker = markersRef.current[String(node.id)];
-      if (marker) {
+      const marker = markersRef.current[node.id];
+      if (marker && mapRef.current) {
         const latlng = marker.getLatLng();
         mapRef.current.setView(latlng, 14, { animate: true });
         marker.openPopup();
         addLogLine(`📍 Zoom su ${node.name}`);
       } else {
+        console.warn("❌ Marker non trovato per", node.name);
         addLogLine(`❌ Marker non trovato per ${node.name}`);
       }
     } else {
       try {
         addLogLine(`📡 Richiesta posizione per nodo ${node.id} (${node.name})`);
-        await fetch("/request-location", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ node_id: node.id }),
-        });
+        await fetch(`/request-location/${node.id}`, { method: "POST" });
       } catch (err) {
         addLogLine(`❌ Errore richiesta posizione nodo ${node.id}: ${err.message}`);
       }
@@ -70,16 +68,16 @@ export default function Sidebar() {
           <div className="px-4 py-2 text-gray-400">Nessun nodo disponibile</div>
         ) : (
           nodes.map((n) => (
-            <button
+            <div
               key={n.id}
+              className="flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded cursor-pointer"
               onClick={() => handleClick(n)}
-              className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded text-left"
             >
-              <span className="flex-1 truncate flex items-center gap-2 text-white">
+              <span className="flex-1 truncate flex items-center gap-2">
                 {n.hasPos ? (
-                  <MapPin className="w-4 h-4 text-white drop-shadow" />
+                  <MapPin className="w-4 h-4 text-green-400" />
                 ) : (
-                  <MapPinOff className="w-4 h-4 text-white/30" />
+                  <MapPinOff className="w-4 h-4 text-red-400" />
                 )}
                 {n.name}
               </span>
@@ -87,7 +85,7 @@ export default function Sidebar() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
               </span>
-            </button>
+            </div>
           ))
         )}
       </nav>

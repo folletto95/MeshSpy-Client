@@ -14,9 +14,6 @@ export const fetcher = (url) =>
     return r.json();
   });
 
-//
-const fetcher = (url) => fetch(url).then((res) => res.json());
-
 // Hook per ottenere la lista dei nodi
 export function useNodes() {
   const { data, error } = useSWR("/api/nodes", fetcher, {

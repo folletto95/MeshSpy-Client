@@ -16,9 +16,7 @@ export default function App() {
           <MapView />
         </div>
       </div>
-      <WifiDialog />
       <LogViewer />
     </div>
   );
 }
-

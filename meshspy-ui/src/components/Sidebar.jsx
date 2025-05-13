@@ -5,7 +5,7 @@ import { addLogLine } from "./LogViewer";
 
 export default function Sidebar() {
   const { data: nodesData, error } = useNodes();
-  const { mapRef, markersRef } = useMapContext();
+  const { mapRef, markersRef, isReady } = useMapContext();
 
   if (error) {
     return (
@@ -30,9 +30,14 @@ export default function Sidebar() {
   const handleClick = async (node) => {
     addLogLine(`🖱️ Click su ${node.name} (hasPos=${node.hasPos})`);
 
+    if (!isReady || !mapRef.current) {
+      addLogLine("⏳ Mappa non ancora pronta");
+      return;
+    }
+
     if (node.hasPos) {
       const marker = markersRef.current[String(node.id)];
-      if (marker && mapRef.current) {
+      if (marker) {
         const latlng = marker.getLatLng();
         mapRef.current.setView(latlng, 14, { animate: true });
         marker.openPopup();

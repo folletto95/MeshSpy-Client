@@ -105,13 +105,16 @@ class MQTTService:
         node_id = str(data["from"])
         name = self.name_map.get(node_id, node_id)
         old = self.nodes.get(node_id)
-        merged_data = data.copy()
 
-        # Mantieni la vecchia posizione se non presente nel nuovo messaggio
-        if "position" not in merged_data or not merged_data.get("position"):
-            if old and "position" in old.data:
-                merged_data["position"] = old.data["position"]
+        # Preparazione del nuovo dato mantenendo eventuali info precedenti
+        merged_data = old.data.copy() if old else {}
+        merged_data.update(data)
 
+        # Se posizione mancante o nulla, preserva quella precedente
+        if "position" not in data or not data.get("position"):
+            merged_data["position"] = old.data.get("position", {}) if old else {}
+
+        # Aggiorna memoria
         self.nodes[node_id] = NodeData(name=name, data=merged_data)
 
         # Salva/aggiorna info nodo

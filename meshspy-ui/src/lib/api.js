@@ -1,7 +1,5 @@
 import useSWR from "swr";
 
-
-
 // Usa variabile d'ambiente o fallback su localhost:8000
 const API =
   import.meta.env.VITE_API ||

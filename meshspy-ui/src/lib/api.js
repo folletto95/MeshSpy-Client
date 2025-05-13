@@ -1,6 +1,6 @@
 import useSWR from "swr";
 
-const fetcher = (url) => fetch(url).then((res) => res.json());
+
 
 // Usa variabile d'ambiente o fallback su localhost:8000
 const API =
@@ -13,6 +13,7 @@ export const fetcher = (url) =>
     if (!r.ok) throw new Error(`Fetch error ${r.status} for ${API + url}`);
     return r.json();
   });
+const fetcher = (url) => fetch(url).then((res) => res.json());
 
 // Hook per ottenere la lista dei nodi
 export function useNodes() {

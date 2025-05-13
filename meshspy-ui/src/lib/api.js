@@ -14,7 +14,7 @@ export const fetcher = (url) =>
 
 // Hook per ottenere la lista dei nodi
 export function useNodes() {
-  const { data, error } = useSWR("/api/nodes", fetcher, {
+  const { data, error } = useSWR("/nodes", fetcher, {
     refreshInterval: 5000,
   });
 

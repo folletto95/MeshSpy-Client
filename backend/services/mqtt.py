@@ -47,7 +47,7 @@ class MQTTService:
             nid: NodeData(name=node["name"], data={"position": node.get("position", {})})
             for nid, node in load_all_nodes().items()
         }
-        
+
     async def start(self) -> None:
         self._stack = AsyncExitStack()
         try:
@@ -103,7 +103,14 @@ class MQTTService:
             return
         node_id = str(data["from"])
         name = self.name_map.get(node_id, node_id)
-        self.nodes[node_id] = NodeData(name=name, data=data)
+        old = self.nodes.get(node_id)
+        merged_data = data.copy()
+
+        # Mantieni la vecchia posizione se non presente nel nuovo messaggio
+        if "position" not in merged_data and old:
+            merged_data["position"] = old.data.get("position", {})
+
+        self.nodes[node_id] = NodeData(name=name, data=merged_data)
 
         # Salva/aggiorna info nodo
         node_id = data.get("from")

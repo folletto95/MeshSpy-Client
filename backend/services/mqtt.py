@@ -94,7 +94,7 @@ class MQTTService:
             logger.warning("Errore nel parsing JSON del messaggio MQTT su %s: %s", topic_str, e)
             return
 
-        node_id = data.get("from")
+        node_id = str(data.get("from") or "").strip()
         if not node_id:
             logger.warning("Messaggio senza campo 'from': %s", payload_str)
             return
@@ -102,7 +102,7 @@ class MQTTService:
         if node_id not in self.nodes:
             logger.info("Nuovo nodo rilevato: %s", node_id)
             register_node(node_id, node_id)
-            self.name_map[node_id] = str(node_id)
+            self.name_map[node_id] = node_id
 
         msg_type = data.get("type")
         payload_obj = data.get("payload", {})
@@ -159,7 +159,7 @@ class MQTTService:
 
         store_event(node_id, msg_type or topic_str.rsplit("/", 1)[-1], payload_str)
 
-        name = str(self.name_map.get(node_id, node_id))
+        name = self.name_map.get(node_id, node_id)
         self.nodes[node_id] = NodeData(name=name, data=data)
 
 

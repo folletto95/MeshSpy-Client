@@ -15,7 +15,7 @@ from backend.services.db import (
     upsert_nodeinfo,
     update_position,
     store_event,
-    load_all_nodes,  # aggiunto
+    load_all_nodes,
 )
 
 class NodeData(BaseModel):
@@ -101,20 +101,20 @@ class MQTTService:
         if "from" not in data:
             logger.warning("Messaggio senza campo 'from': %s", data)
             return
+
         node_id = str(data["from"])
         name = self.name_map.get(node_id, node_id)
         old = self.nodes.get(node_id)
         merged_data = data.copy()
 
         # Mantieni la vecchia posizione se non presente nel nuovo messaggio
-        if "position" not in merged_data and old:
-            merged_data["position"] = old.data.get("position", {})
+        if "position" not in merged_data or not merged_data.get("position"):
+            if old and "position" in old.data:
+                merged_data["position"] = old.data["position"]
 
         self.nodes[node_id] = NodeData(name=name, data=merged_data)
 
         # Salva/aggiorna info nodo
-        node_id = data.get("from")
-        name = self.name_map.get(node_id, node_id)
         register_node(node_id, name)
 
         # Gestione messaggi di posizione
@@ -150,7 +150,6 @@ class MQTTService:
         if "cmd" in data:
             logger.info("Ricevuto comando da %s: %s", name, data["cmd"])
             store_event(node_id, f"cmd: {data['cmd']}")
-
 
 mqtt_service = MQTTService()
 

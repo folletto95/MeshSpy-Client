@@ -125,3 +125,21 @@ def store_event(id: str, event_type: str, data: str):
         """, (id, event_type, data))
         conn.commit()
         logging.debug(f"Evento salvato: {event_type} per {id}")
+
+def load_all_nodes() -> dict:
+    init_db()
+    with _lock, sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute("""
+            SELECT id, name, last_x, last_y FROM nodes
+        """)
+        return {
+            row[0]: {
+                "name": row[1],
+                "position": {
+                    "latitude": row[2],
+                    "longitude": row[3]
+                } if row[2] is not None and row[3] is not None else {}
+            }
+            for row in cur.fetchall()
+        }
+

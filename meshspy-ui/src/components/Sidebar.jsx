@@ -30,12 +30,12 @@ export default function Sidebar() {
   const handleClick = async (node) => {
     addLogLine(`🖱️ Click su ${node.name} (hasPos=${node.hasPos})`);
 
-    if (!isReady || !mapRef.current) {
-      addLogLine("⏳ Mappa non ancora pronta");
-      return;
-    }
-
     if (node.hasPos) {
+      if (!isReady || !mapRef.current) {
+        addLogLine("⏳ Mappa non ancora pronta");
+        return;
+      }
+
       const marker = markersRef.current[String(node.id)];
       if (marker) {
         const latlng = marker.getLatLng();

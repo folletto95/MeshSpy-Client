@@ -11,7 +11,7 @@ DB_PATH = os.path.join(DB_DIR, "node.db")
 _lock = Lock()
 
 def init_db():
-    logging.debug(f"Usando database persistente in: {DB_PATH}")
+    logging.debug(f"🗄️  Usando database persistente in: {DB_PATH}")
     """Crea le tabelle nodes e nodes_history se non esistono."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with _lock, sqlite3.connect(DB_PATH) as conn:

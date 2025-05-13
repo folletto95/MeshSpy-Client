@@ -38,6 +38,7 @@ logger.debug("Caricate da .env: HOST=%s PORT=%s USER=%r", BROKER_HOST, BROKER_PO
 
 class MQTTService:
     def __init__(self) -> None:
+        logger.info(f"🗄️  DB path usato da MQTT: ~/.meshspy_data/node.db")
         self._stack: AsyncExitStack | None = None
         self.client: Client | None = None
         self.name_map: Dict[str, str] = {}
@@ -60,11 +61,12 @@ class MQTTService:
                 await self.client.subscribe(topic)
                 logger.info("Sottoscritto a %s", topic)
 
+            logger.info("✅ Connessione MQTT avviata con %s:%s", BROKER_HOST, BROKER_PORT)
             logger.info("In ascolto su topic MQTT")
             asyncio.create_task(self._listener(self.client.messages))
 
         except MqttError as e:
-            logger.error("Errore MQTT in start(): %s", e)
+            logger.error("❌ Errore MQTT: %s", e)
             await self.stop()
             raise
 

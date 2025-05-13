@@ -16,8 +16,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-console.log("Registrato marker per", n.id, marker);
-
 export default function MapView() {
   const { data: rawNodes } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
@@ -71,6 +69,7 @@ export default function MapView() {
             ref={(marker) => {
               if (marker && marker.getLatLng) {
                 markersRef.current[String(n.id)] = marker;
+                console.log("Registrato marker per", n.id, marker);
               }
             }}
           >

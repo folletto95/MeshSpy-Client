@@ -1,7 +1,7 @@
 // tailwind.config.js
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
-  darkMode: "class", // ⬅️ aggiunto
+  darkMode: "class", // <=== Attivazione dark mode
   theme: {
     extend: {
       colors: {
@@ -11,4 +11,3 @@ export default {
   },
   plugins: [],
 };
-

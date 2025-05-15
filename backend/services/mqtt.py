@@ -1,175 +1,116 @@
 import asyncio
-import logging
 import json
+import logging
 import os
+from collections import defaultdict
 from contextlib import AsyncExitStack
-from typing import Any, Dict
+from typing import Optional
 
-from pydantic import BaseModel, ValidationError
-from dotenv import find_dotenv, load_dotenv
 from aiomqtt import Client, MqttError
+from fastapi import Depends
 
-from backend.logging_config import logger
 from backend.services.db import (
-    register_node,
-    upsert_nodeinfo,
+    get_db_path,
+    init_db,
+    insert_node,
+    load_nodes_from_db,
     update_position,
-    store_event,
-    load_all_nodes,
+    update_nodeinfo,
 )
-
-class NodeData(BaseModel):
-    name: str
-    data: dict
+from backend.state import AppState
 
 logger = logging.getLogger("meshspy.mqtt")
 
-env_path = find_dotenv(usecwd=True)
-if not env_path:
-    raise RuntimeError(".env non trovato: mettilo nella radice di MeshSpy")
-load_dotenv(env_path)
+MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
 
-BROKER_HOST     = os.getenv("MQTT_HOST", "192.168.10.202")
-BROKER_PORT     = int(os.getenv("MQTT_PORT", 1883))
-BROKER_USERNAME = os.getenv("MQTT_USERNAME", "")
-BROKER_PASSWORD = os.getenv("MQTT_PASSWORD", "")
-TOPICS          = os.getenv("MQTT_TOPICS", "#").split(",")
-
-logger.debug("Caricate da .env: HOST=%s PORT=%s USER=%r", BROKER_HOST, BROKER_PORT, BROKER_USERNAME)
+class NodeData:
+    def __init__(self, name: str, data: dict):
+        self.name = name
+        self.data = data
 
 class MQTTService:
-    def __init__(self) -> None:
-        logger.info(f"🗄️  DB path usato da MQTT: ~/.meshspy_data/node.db")
-        self._stack: AsyncExitStack | None = None
-        self.client: Client | None = None
-        self.name_map: Dict[str, str] = {}
-        self.nodes: Dict[str, NodeData] = {
-            nid: NodeData(name=node["name"], data={"position": node.get("position", {})})
-            for nid, node in load_all_nodes().items()
-        }
+    def __init__(self):
+        self.client: Optional[Client] = None
+        self.stack: Optional[AsyncExitStack] = None
+        self.nodes = {}
+        self.nodes_by_id = {}
+        self.state = AppState()
+        self.db_path = get_db_path()
+        self.my_node_id = "Server-MeshSpy"
 
-    async def start(self) -> None:
-        self._stack = AsyncExitStack()
+    async def start(self):
+        logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
+        init_db()
+        self.nodes = load_nodes_from_db()
+
+        self.stack = AsyncExitStack()
+        await self.stack.__aenter__()
+
+        client_kwargs = {"hostname": MQTT_HOST, "port": MQTT_PORT}
+        self.client = await self.stack.enter_async_context(Client(**client_kwargs))
+
+        await self.client.subscribe(MQTT_TOPIC)
+        logger.info("Sottoscritto a %s", MQTT_TOPIC)
+        logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_HOST, MQTT_PORT)
+        logger.info("In ascolto su topic MQTT")
+
+        asyncio.create_task(self._listener())
+
+    async def stop(self):
+        logger.info("MQTT listener fermato")
+        if self.stack:
+            await self.stack.aclose()
+
+    async def _listener(self):
+        assert self.client is not None
         try:
-            client_kwargs: dict[str, Any] = {
-                "hostname": BROKER_HOST,
-                "port": BROKER_PORT,
-            }
-            if BROKER_USERNAME:
-                client_kwargs["username"] = BROKER_USERNAME
-                client_kwargs["password"] = BROKER_PASSWORD
-
-            self.client = await self._stack.enter_async_context(Client(**client_kwargs))
-
-            for topic in TOPICS:
-                await self.client.subscribe(topic)
-                logger.info("Sottoscritto a %s", topic)
-
-            logger.info("✅ Connessione MQTT avviata con %s:%s", BROKER_HOST, BROKER_PORT)
-            logger.info("In ascolto su topic MQTT")
-            asyncio.create_task(self._listener(self.client.messages))
-
+            async for msg in self.client:
+                await self._handle_message(msg.topic, msg.payload)
         except MqttError as e:
-            logger.error("❌ Errore MQTT: %s", e)
-            await self.stop()
-            raise
-
-    async def _listener(self, messages):
-        try:
-            async with self.client.unfiltered_messages() as messages:
-                await self.client.subscribe("#")
-                logger.info("Sottoscritto a #")
-                logger.info("In ascolto su topic MQTT")
-
-                async for msg in messages:
-                    await self._handle_message(msg.topic, msg.payload)
-
-        except MqttError as e:
-            logger.warning(f"MQTT disconnesso: {e}")
+            logger.error("MQTT listener error: %s", e)
         finally:
-            logger.info("MQTT listener fermato")
+            await self.stop()
 
-    async def stop(self) -> None:
-        if self._stack:
-            await self._stack.aclose()
-            logger.info("MQTT listener fermato")
-
-    async def _handle_message(self, topic: Any, payload: bytes) -> None:
-        topic_str = str(topic)
-
+    async def _handle_message(self, topic, payload):
         try:
-            payload_str = payload.decode("utf-8")
+            message = json.loads(payload.decode("utf-8"))
         except UnicodeDecodeError as e:
-            logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic_str, e)
+            logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
             return
-
-        try:
-            data = json.loads(payload_str)
         except json.JSONDecodeError as e:
-            logger.warning("Errore nel parsing JSON del messaggio MQTT su %s: %s", topic_str, e)
+            logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
             return
 
-        if "from" not in data:
-            logger.warning("Messaggio senza campo 'from': %s", data)
+        node_id = message.get("from")
+        if not node_id:
+            logger.warning("Messaggio senza campo 'from': %s", message)
             return
 
-        if str(data["from"]) == "Server-MeshSpy":
-            logger.debug("Ignorato messaggio del server stesso.")
+        if node_id == self.my_node_id:
             return
 
-        node_id = str(data["from"])
-        name = self.name_map.get(node_id, node_id)
-        old = self.nodes.get(node_id)
-
-        # Preparazione del nuovo dato mantenendo eventuali info precedenti
-        merged_data = old.data.copy() if old else {}
-        merged_data.update(data)
-
-        # Se posizione mancante o nulla, preserva quella precedente
-        if "position" not in data or not data.get("position"):
-            merged_data["position"] = old.data.get("position", {}) if old else {}
-
-        # Aggiorna memoria
-        self.nodes[node_id] = NodeData(name=name, data=merged_data)
-
-        # Salva/aggiorna info nodo
-        register_node(node_id, name)
-
-        # Gestione messaggi di posizione
-        if "position" in data:
-            pos = data["position"]
-            lat, lon = pos.get("latitude"), pos.get("longitude")
-
+        cmd = message.get("cmd")
+        if cmd == "position":
+            lat = message.get("lat")
+            lon = message.get("lon")
             if lat is not None and lon is not None:
-                old_data = self.nodes.get(node_id)
-                old_pos = old_data.data.get("position", {}) if old_data else {}
-                old_lat, old_lon = old_pos.get("latitude"), old_pos.get("longitude")
-
-                if (lat != old_lat) or (lon != old_lon):
-                    logger.info("Posizione aggiornata per %s → lat: %.5f, lon: %.5f", name, lat, lon)
+                last = self.nodes.get(node_id)
+                if not last or last.data.get("lat") != lat or last.data.get("lon") != lon:
+                    logger.info("📍 Posizione aggiornata per %s: (%s, %s)", node_id, lat, lon)
                     update_position(node_id, lat, lon)
-                else:
-                    logger.debug("Posizione invariata per %s, non aggiorno DB", name)
-
-        # Gestione nodeinfo
-        if "user" in data:
-            user = data["user"]
-            short_name = user.get("shortName")
-            long_name = user.get("longName")
-
-            if short_name:
-                self.name_map[node_id] = short_name
-                logger.info("Aggiornato nodeinfo per %s → %s", node_id, short_name)
-            elif long_name:
-                self.name_map[node_id] = long_name
-                logger.info("Aggiornato nodeinfo per %s → %s", node_id, long_name)
-
-        # Gestione comandi
-        if "cmd" in data:
-            logger.info("Ricevuto comando da %s: %s", name, data["cmd"])
-            store_event(node_id, f"cmd: {data['cmd']}")
-
-mqtt_service = MQTTService()
+                    self.nodes[node_id] = NodeData(name=node_id, data=message)
+        elif cmd == "nodeinfo":
+            name = message.get("name")
+            if name:
+                logger.info("ℹ️  Aggiornato nodeinfo per %s → %s", node_id, name)
+                update_nodeinfo(node_id, name)
+                self.nodes[node_id] = NodeData(name=name, data=message)
+        else:
+            logger.info("Tipo messaggio sconosciuto (%s) da %s", cmd or "", node_id)
 
 def get_mqtt_service() -> MQTTService:
-    return mqtt_service
+    return AppState().mqtt_service
+
+mqtt_service = get_mqtt_service()

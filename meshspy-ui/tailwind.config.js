@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        meshtastic: "#00c853", // verde ufficiale
+        meshtastic: "#00c853",
       },
     },
   },

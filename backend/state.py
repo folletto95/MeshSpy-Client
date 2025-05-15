@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from backend.services.mqtt import MQTTService  # ← Assicurati che sia importabile!
 
 class Node(BaseModel):
     id: str
@@ -18,3 +19,4 @@ nodes: dict[str, Node] = {}
 class AppState:
     def __init__(self):
         self.nodes: dict[str, Node] = nodes
+        self.mqtt_service = MQTTService()  # 🛠️ Istanzia qui!

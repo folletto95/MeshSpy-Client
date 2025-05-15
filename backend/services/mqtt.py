@@ -74,7 +74,7 @@ class MQTTService:
             await self.stop()
             raise
 
-    async def _listener(self):
+    async def _listener(self, messages):
         try:
             async with self.client.unfiltered_messages() as messages:
                 await self.client.subscribe("#")
@@ -111,6 +111,10 @@ class MQTTService:
 
         if "from" not in data:
             logger.warning("Messaggio senza campo 'from': %s", data)
+            return
+
+        if str(data["from"]) == "Server-MeshSpy":
+            logger.debug("Ignorato messaggio del server stesso.")
             return
 
         node_id = str(data["from"])

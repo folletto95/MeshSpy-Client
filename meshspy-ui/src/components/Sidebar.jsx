@@ -1,11 +1,11 @@
 import { useNodes } from "../lib/api";
 import { useMapContext } from "../lib/MapContext";
-import { Radio, MapPin, MapPinOff } from "lucide-react";
+import { Radio, MapPin, HelpCircle } from "lucide-react";
 import { addLogLine } from "./LogViewer";
 
 export default function Sidebar() {
   const { data: nodesData, error } = useNodes();
-  const { mapRef, markersRef, isReady } = useMapContext();
+  const { mapRef, markersRef } = useMapContext();
 
   if (error) {
     return (
@@ -28,14 +28,6 @@ export default function Sidebar() {
     : [];
 
   const handleClick = async (node) => {
-    console.log("🖱️ Click su", node.name, `(hasPos=${node.hasPos})`);
-
-    if (!isReady) {
-      console.warn("⏳ Mappa non ancora pronta");
-      addLogLine("⏳ Mappa non ancora pronta");
-      return;
-    }
-
     if (node.hasPos) {
       const marker = markersRef.current[node.id];
       if (marker && mapRef.current) {
@@ -44,15 +36,14 @@ export default function Sidebar() {
         marker.openPopup();
         addLogLine(`📍 Zoom su ${node.name}`);
       } else {
-        console.warn("❌ Marker non trovato per", node.name);
         addLogLine(`❌ Marker non trovato per ${node.name}`);
       }
     } else {
+      addLogLine(`📡 Richiesta posizione per nodo ${node.id} (${node.name})`);
       try {
-        addLogLine(`📡 Richiesta posizione per nodo ${node.id} (${node.name})`);
         await fetch(`/request-location/${node.id}`, { method: "POST" });
       } catch (err) {
-        addLogLine(`❌ Errore richiesta posizione nodo ${node.id}: ${err.message}`);
+        addLogLine(`❌ Errore richiesta posizione: ${err.message}`);
       }
     }
   };
@@ -75,15 +66,11 @@ export default function Sidebar() {
             >
               <span className="flex-1 truncate flex items-center gap-2">
                 {n.hasPos ? (
-                  <MapPin className="w-4 h-4 text-green-400" />
+                  <MapPin className="w-4 h-4 text-lime-400" />
                 ) : (
-                  <MapPinOff className="w-4 h-4 text-red-400" />
+                  <HelpCircle className="w-4 h-4 text-gray-400" />
                 )}
                 {n.name}
-              </span>
-              <span className="relative flex h-2 w-2 text-meshtastic">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />
               </span>
             </div>
           ))

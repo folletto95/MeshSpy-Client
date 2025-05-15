@@ -5,10 +5,11 @@ ROOT="$(dirname "$(realpath "$0")")"
 # attiva la venv
 source "$ROOT/backend/.venv/bin/activate"
 
-# chiude eventuali processi uvicorn già attivi
-if pgrep -f "uvicorn backend.main:app" > /dev/null; then
-  echo "⚠️  Uvicorn già in esecuzione. Termino il processo..."
-  pkill -f "uvicorn backend.main:app"
+# chiude il processo che occupa la porta 8000 se esiste
+if lsof -i:8000 &> /dev/null; then
+  echo "⚠️  Porta 8000 occupata. Uccido il processo che la sta usando..."
+  PID=$(lsof -ti:8000)
+  kill -9 "$PID"
   sleep 1
 fi
 

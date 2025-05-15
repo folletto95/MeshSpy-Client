@@ -19,12 +19,13 @@ export default function MapView() {
   const { data: nodesData } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
+  const fallbackCenter = [43.7162, 10.4017]; // Pisa di default
+
   const nodes = nodesData
     ? Object.entries(nodesData)
         .map(([id, info]) => {
           const payload = info.data?.payload;
           if (!payload?.latitude_i || !payload?.longitude_i) return null;
-
           return {
             id,
             name: info.name,
@@ -35,21 +36,17 @@ export default function MapView() {
         .filter(Boolean)
     : [];
 
-  if (nodes.length === 0) {
-    return (
-      <div className="h-80 flex items-center justify-center text-gray-400">
-        Caricamento mappa…
-      </div>
-    );
-  }
-
-  const avgLat = nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length;
-  const avgLon = nodes.reduce((sum, n) => sum + n.lon, 0) / nodes.length;
+  const center = nodes.length > 0
+    ? [
+        nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length,
+        nodes.reduce((sum, n) => sum + n.lon, 0) / nodes.length,
+      ]
+    : fallbackCenter;
 
   return (
     <div className="h-80 rounded-2xl overflow-hidden shadow ring-1 ring-black/5">
       <MapContainer
-        center={[avgLat, avgLon]}
+        center={center}
         zoom={6}
         className="h-full w-full"
         whenCreated={(map) => {

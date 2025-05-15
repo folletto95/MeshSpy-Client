@@ -19,4 +19,11 @@ nodes: dict[str, Node] = {}
 class AppState:
     def __init__(self):
         self.nodes: dict[str, Node] = nodes
-        self.mqtt_service = MQTTService()  # 🛠️ Istanzia qui!
+        self._mqtt_service = None
+
+    @property
+    def mqtt_service(self):
+        if self._mqtt_service is None:
+            from backend.services.mqtt import MQTTService  # Import lazy QUI
+            self._mqtt_service = MQTTService()
+        return self._mqtt_service

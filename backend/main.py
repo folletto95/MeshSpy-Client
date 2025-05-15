@@ -16,7 +16,7 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
 from backend.services.mqtt import mqtt_service, get_mqtt_service
-#from backend.services.db import get_display_name
+from backend.services.db import get_display_name
 from backend.routes import ws_logs
 
 api_router = APIRouter()

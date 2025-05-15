@@ -24,8 +24,8 @@ logger = logging.getLogger("meshspy.mqtt")
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
-MQTT_USERNAME = os.getenv("MQTT_USERNAME")
-MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")  # 🔧 aggiunto
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")  # 🔧 aggiunto
 
 class NodeData:
     def __init__(self, name: str, data: dict):
@@ -50,7 +50,16 @@ class MQTTService:
         self.stack = AsyncExitStack()
         await self.stack.__aenter__()
 
-        client_kwargs = {"hostname": MQTT_HOST, "port": MQTT_PORT}
+        # 🔧 BLOCCO MODIFICATO: include credenziali solo se presenti
+        client_kwargs = {
+            "hostname": MQTT_HOST,
+            "port": MQTT_PORT,
+        }
+
+        if MQTT_USERNAME and MQTT_PASSWORD:
+            client_kwargs["username"] = MQTT_USERNAME
+            client_kwargs["password"] = MQTT_PASSWORD
+
         self.client = await self.stack.enter_async_context(Client(**client_kwargs))
 
         await self.client.subscribe(MQTT_TOPIC)

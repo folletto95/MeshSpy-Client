@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from backend.services.mqtt import MQTTService  # ← Assicurati che sia importabile!
 
 class Node(BaseModel):
     id: str

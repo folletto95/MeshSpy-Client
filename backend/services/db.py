@@ -130,3 +130,10 @@ def get_node_by_id(node_id: int) -> Optional[Dict[str, Any]]:
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
+
+# 🆕 AGGIUNTA: Per ottenere il nome del nodo da ID (fallback sullo stesso ID)
+from backend.state import nodes
+
+def get_display_name(node_id: str) -> str:
+    node = nodes.get(node_id)
+    return node.name if node and node.name else node_id

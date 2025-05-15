@@ -89,7 +89,7 @@ async def health() -> dict[str, str]:
 # ────────────────────────────────────────────────────────────────────────────
 # List nodes (REST)
 # ────────────────────────────────────────────────────────────────────────────
-@app.get("/nodes")
+@app.get("/api/nodes")
 async def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
     return {
         str(node_id): {

@@ -9,7 +9,7 @@ source "$ROOT/backend/.venv/bin/activate"
 if lsof -i:8000 &> /dev/null; then
   echo "⚠️  Porta 8000 occupata. Uccido il processo che la sta usando..."
   PID=$(lsof -ti:8000)
-  kill -9 "$PID"
+  kill -9 $PID
   sleep 1
 fi
 

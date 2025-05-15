@@ -13,3 +13,8 @@ class Node(BaseModel):
 
 # parte vuota: verrà popolato via MQTT
 nodes: dict[str, Node] = {}
+
+# Aggiunta della classe AppState per gestione centralizzata
+class AppState:
+    def __init__(self):
+        self.nodes: dict[str, Node] = nodes

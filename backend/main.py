@@ -19,7 +19,6 @@ from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name
 from backend.routes import ws_logs
 
-app.include_router(ws_logs.router)
 api_router = APIRouter()
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -46,6 +45,8 @@ async def lifespan(app: FastAPI):
     logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
+
+app.include_router(ws_logs.router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,22 +1,21 @@
-import React from "react";
-import Sidebar from "./components/Sidebar";
-import MapView from "./components/MapView";
 import Topbar from "./components/Topbar";
+import Sidebar from "./components/Sidebar";
 import Metrics from "./components/Metrics";
+import MapView from "./components/MapView";
 import LogViewer from "./components/LogViewer";
 
 export default function App() {
   return (
     <div className="h-screen flex flex-col">
       <Topbar />
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <div className="flex flex-col flex-1">
+        <main className="flex-1 bg-gray-50 p-6 overflow-y-auto space-y-6">
           <Metrics />
           <MapView />
-        </div>
+          <LogViewer />
+        </main>
       </div>
-      <LogViewer />
     </div>
   );
 }

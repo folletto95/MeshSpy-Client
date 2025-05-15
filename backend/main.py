@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, WebSocket
+from fastapi import Depends, FastAPI, WebSocket, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, FileResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
@@ -18,6 +18,9 @@ from pydantic import BaseModel
 from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name
 from backend.routes import ws_logs
+
+app.include_router(ws_logs.router)
+api_router = APIRouter()
 
 # ────────────────────────────────────────────────────────────────────────────
 # .env & logging

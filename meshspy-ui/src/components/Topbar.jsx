@@ -1,10 +1,12 @@
-// src/components/Topbar.jsx
+import { Plus } from "lucide-react";
+
 export default function Topbar() {
   return (
-    <header className="h-12 px-4 flex items-center justify-between bg-white/70 backdrop-blur sticky top-0 z-10 shadow">
-      <span className="text-sm text-gray-700">Broker: online</span>
-      <button className="px-3 py-1 rounded-lg bg-meshtastic hover:bg-meshtastic/90 text-white text-sm shadow">
-        Add Node
+    <header className="flex items-center justify-between bg-white border-b px-6 py-3 shadow">
+      <h1 className="text-xl font-semibold text-gray-700">MeshSpy</h1>
+      <button className="flex items-center gap-2 px-4 py-2 text-sm bg-meshtastic text-white rounded hover:bg-green-600">
+        <Plus className="w-4 h-4" />
+        Aggiungi Nodo
       </button>
     </header>
   );

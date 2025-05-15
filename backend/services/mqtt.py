@@ -74,9 +74,20 @@ class MQTTService:
             await self.stop()
             raise
 
-    async def _listener(self, messages) -> None:
-        async for msg in messages:
-            await self._handle_message(msg.topic, msg.payload)
+    async def _listener(self):
+        try:
+            async with self.client.unfiltered_messages() as messages:
+                await self.client.subscribe("#")
+                logger.info("Sottoscritto a #")
+                logger.info("In ascolto su topic MQTT")
+
+                async for msg in messages:
+                    await self._handle_message(msg.topic, msg.payload)
+
+        except MqttError as e:
+            logger.warning(f"MQTT disconnesso: {e}")
+        finally:
+            logger.info("MQTT listener fermato")
 
     async def stop(self) -> None:
         if self._stack:

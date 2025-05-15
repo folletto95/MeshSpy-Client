@@ -10,7 +10,6 @@ from aiomqtt import Client, MqttError
 from fastapi import Depends
 
 from backend.services.db import (
-    get_db_path,
     init_db,
     insert_node,
     load_nodes_from_db,

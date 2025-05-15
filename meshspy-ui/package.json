@@ -15,7 +15,7 @@
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
     "swr": "^2.2.0",
-    "headlessui/react": "^1.7.17"
+    "@headlessui/react": "^1.7.17"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",

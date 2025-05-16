@@ -79,9 +79,9 @@ class MQTTService:
     async def _listener(self):
         assert self.client is not None
         try:
-            async with self.client.messages as messages:
-                async for msg in messages:
-                    await self._handle_message(msg.topic, msg.payload)
+            messages = self.client.messages  # NON usare async with
+            async for msg in messages:
+                await self._handle_message(msg.topic, msg.payload)
         except MqttError as e:
             logger.error("MQTT listener error: %s", e)
         finally:

@@ -1,41 +1,12 @@
-import { useNodes } from "../lib/api";
-import { useMapContext } from "../lib/MapContext";
+import { useMap } from "../lib/MapContext";
 import { Radio, MapPin, HelpCircle } from "lucide-react";
 import { addLogLine } from "./LogViewer";
 
 export default function Sidebar() {
-  const { data: nodesData, error } = useNodes();
-  const { mapRef, markersRef } = useMapContext();
-
-  if (error) {
-    return (
-      <aside className="w-60 bg-gray-900 text-white p-4">
-        <p className="text-red-400">Errore caricamento nodi</p>
-      </aside>
-    );
-  }
-
-  const nodes = nodesData
-    ? Object.entries(nodesData).map(([id, info]) => {
-        const payload = info.data?.payload ?? {};
-        const name =
-          payload.longname ||
-          payload.shortname ||
-          info.name ||
-          info.data?.name ||
-          id;
-
-        const posLat = payload.latitude_i ?? info.data?.latitude;
-        const posLng = payload.longitude_i ?? info.data?.longitude;
-
-        const hasPos = posLat != null && posLng != null;
-
-        return { id, name, hasPos };
-      })
-    : [];
+  const { nodes, mapRef, markersRef } = useMap();
 
   const handleClick = async (node) => {
-    if (node.hasPos) {
+    if (node.hasPosition) {
       const marker = markersRef.current[node.id];
       if (marker && mapRef.current) {
         const latlng = marker.getLatLng();
@@ -74,7 +45,7 @@ export default function Sidebar() {
               onClick={() => handleClick(n)}
             >
               <span className="flex-1 truncate flex items-center gap-2">
-                {n.hasPos ? (
+                {n.hasPosition ? (
                   <MapPin className="w-4 h-4 text-lime-400" />
                 ) : (
                   <HelpCircle className="w-4 h-4 text-gray-400" />

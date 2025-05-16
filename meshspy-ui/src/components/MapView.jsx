@@ -1,6 +1,5 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useNodes } from "../lib/api";
-import { useMapContext } from "../lib/MapContext";
+import { useMap } from "../lib/MapContext";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -16,39 +15,18 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function MapView() {
-  const { data: nodesData } = useNodes();
-  const { mapRef, markersRef, setIsReady } = useMapContext();
+  const { nodes, mapRef, markersRef, setIsReady } = useMap();
 
-  const fallbackCenter = [43.7162, 10.4017]; // Pisa di default
+  const nodesWithPos = nodes.filter((n) => n.hasPosition);
 
-  const nodes = nodesData
-    ? Object.entries(nodesData)
-        .map(([id, info]) => {
-          const payload = info.data?.payload ?? {};
-          const latRaw = payload.latitude_i ?? info.data?.latitude;
-          const lonRaw = payload.longitude_i ?? info.data?.longitude;
-          if (latRaw == null || lonRaw == null) return null;
-
-          return {
-            id,
-            name:
-              payload.longname ||
-              payload.shortname ||
-              info.name ||
-              info.data?.name ||
-              id,
-            lat: latRaw / 1e7,
-            lon: lonRaw / 1e7,
-          };
-        })
-        .filter(Boolean)
-    : [];
-
+  const fallbackCenter = [43.7162, 10.4017];
   const center =
-    nodes.length > 0
+    nodesWithPos.length > 0
       ? [
-          nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length,
-          nodes.reduce((sum, n) => sum + n.lon, 0) / nodes.length,
+          nodesWithPos.reduce((sum, n) => sum + n.latitude, 0) /
+            nodesWithPos.length,
+          nodesWithPos.reduce((sum, n) => sum + n.longitude, 0) /
+            nodesWithPos.length,
         ]
       : fallbackCenter;
 
@@ -67,10 +45,10 @@ export default function MapView() {
           attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {nodes.map((n) => (
+        {nodesWithPos.map((n) => (
           <Marker
             key={n.id}
-            position={[n.lat, n.lon]}
+            position={[n.latitude, n.longitude]}
             ref={(el) => {
               if (el) markersRef.current[n.id] = el;
             }}
@@ -78,7 +56,7 @@ export default function MapView() {
             <Popup>
               <div className="font-semibold">{n.name}</div>
               <div className="text-sm text-gray-500">
-                {n.lat.toFixed(5)}, {n.lon.toFixed(5)}
+                {n.latitude.toFixed(5)}, {n.longitude.toFixed(5)}
               </div>
             </Popup>
           </Marker>

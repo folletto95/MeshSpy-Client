@@ -9,6 +9,8 @@ from typing import Optional
 from aiomqtt import Client, MqttError
 from fastapi import Depends
 
+from dotenv import load_dotenv
+
 from backend.services.db import (
     init_db,
     insert_node,
@@ -18,6 +20,8 @@ from backend.services.db import (
     get_db_path,
 )
 from backend.state import AppState
+
+load_dotenv()
 
 logger = logging.getLogger("meshspy.mqtt")
 

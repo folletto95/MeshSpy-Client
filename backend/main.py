@@ -94,15 +94,14 @@ async def health() -> dict[str, str]:
 # List nodes (REST)
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/nodes")
-async def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
+def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
     return {
         str(node_id): {
             "name": get_display_name(node_id),
-            "data": payload,
+            "data": payload.data,  # ✅ Accedi al campo corretto
         }
         for node_id, payload in svc.nodes.items()
     }
-
 # ────────────────────────────────────────────────────────────────────────────
 # WiFi config generator
 # ────────────────────────────────────────────────────────────────────────────
@@ -134,7 +133,7 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
             current = {
                 nid: {
                     "name": get_display_name(nid),
-                    "data": data.get(),
+                    "data": data.data,
                 }
                 for nid, data in svc.nodes.items()
             }

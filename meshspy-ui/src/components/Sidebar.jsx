@@ -17,8 +17,9 @@ export default function Sidebar() {
 
   const nodes = nodesData
     ? Object.entries(nodesData).map(([id, info]) => {
-        const payload = info.data?.payload || {};
-        const hasPos = !!(payload.latitude_i && payload.longitude_i);
+        const posLat = info.data?.payload?.latitude_i ?? info.data?.latitude;
+        const posLng = info.data?.payload?.longitude_i ?? info.data?.longitude;
+        const hasPos = posLat != null && posLng != null;
         return {
           id,
           name: info.name ?? "(senza nome)",

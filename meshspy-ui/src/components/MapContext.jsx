@@ -1,45 +1,14 @@
-import React, { createContext, useContext, useRef, useState, useEffect } from "react";
-import { useNodes } from "../lib/api";
+import React, { createContext, useContext, useRef, useState } from "react";
 
 const MapContext = createContext();
 
 export function MapProvider({ children }) {
-  const mapRef = useRef(null);
-  const markersRef = useRef({});
-  const [isReady, setIsReady] = useState(false);
+  const mapRef = useRef(null);           // riferimento alla mappa Leaflet
+  const markersRef = useRef({});         // riferimento a tutti i marker
+  const [isReady, setIsReady] = useState(false); // stato inizializzazione mappa
   const [selectedNodeId, setSelectedNodeId] = useState(null);
-  const [nodes, setNodes] = useState([]);
 
-  const { data: rawData } = useNodes();
-
-  useEffect(() => {
-    if (!rawData) return;
-
-    const result = Object.entries(rawData).map(([id, info]) => {
-      const payload = info.data?.payload ?? {};
-      const latRaw = payload.latitude_i ?? info.data?.latitude;
-      const lonRaw = payload.longitude_i ?? info.data?.longitude;
-
-      const lat = latRaw != null ? latRaw / 1e7 : null;
-      const lon = lonRaw != null ? lonRaw / 1e7 : null;
-
-      return {
-        id,
-        name:
-          payload.longname ||
-          payload.shortname ||
-          info.name ||
-          info.data?.name ||
-          id,
-        latitude: lat,
-        longitude: lon,
-        hasPosition: lat !== null && lon !== null,
-        raw: info,
-      };
-    });
-
-    setNodes(result);
-  }, [rawData]);
+  console.log("MapProvider isReady:", isReady);
 
   return (
     <MapContext.Provider
@@ -50,14 +19,13 @@ export function MapProvider({ children }) {
         setIsReady,
         selectedNodeId,
         setSelectedNodeId,
-        nodes,
       }}
     >
       {children}
     </MapContext.Provider>
   );
 }
-//dio 88
+
 export function useMap() {
   return useContext(MapContext);
 }

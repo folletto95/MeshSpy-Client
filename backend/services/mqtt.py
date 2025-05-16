@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import uuid
 from collections import defaultdict
 from contextlib import AsyncExitStack
 from typing import Optional
@@ -51,14 +50,14 @@ class MQTTService:
         self.stack = AsyncExitStack()
         await self.stack.__aenter__()
 
-        self.client = Client()
-        await self.client.connect(
-            hostname=MQTT_HOST,
-            port=MQTT_PORT,
-            username=MQTT_USERNAME if MQTT_USERNAME else None,
-            password=MQTT_PASSWORD if MQTT_PASSWORD else None,
-            client_id=f"meshspy-{uuid.uuid4()}",
-            keepalive=60,
+        self.client = await self.stack.enter_async_context(
+            Client(
+                hostname=MQTT_HOST,
+                port=MQTT_PORT,
+                username=MQTT_USERNAME if MQTT_USERNAME else None,
+                password=MQTT_PASSWORD if MQTT_PASSWORD else None,
+                keepalive=60,
+            )
         )
 
         await self.client.subscribe(MQTT_TOPIC)

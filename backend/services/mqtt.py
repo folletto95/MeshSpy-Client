@@ -109,24 +109,12 @@ class MQTTService:
         if node_id == self.my_node_id:
             return
 
-        cmd = message.get("cmd")
-        if cmd == "position":
-            lat = message.get("lat")
-            lon = message.get("lon")
-            if lat is not None and lon is not None:
-                last = self.nodes.get(node_id)
-                if not last or last.data.get("lat") != lat or last.data.get("lon") != lon:
-                    logger.info("📍 Posizione aggiornata per %s: (%s, %s)", node_id, lat, lon)
-                    update_position(node_id, lat, lon)
-                    self.nodes[node_id] = NodeData(name=node_id, data=message)
-        elif cmd == "nodeinfo":
-            name = message.get("name")
-            if name:
-                logger.info("ℹ️  Aggiornato nodeinfo per %s → %s", node_id, name)
-                update_nodeinfo(node_id, name)
-                self.nodes[node_id] = NodeData(name=name, data=message)
-        else:
-            logger.info("Tipo messaggio sconosciuto (%s) da %s", cmd or "", node_id)
+        if "cmd" in message:
+            logger.debug("🔁 Ignorato messaggio 'cmd' da %s: %s", node_id, message["cmd"])
+            return
+
+        logger.info("📨 Messaggio valido da %s: %s", node_id, message)
+        self.nodes[node_id] = NodeData(name=node_id, data=message)
 
 def get_mqtt_service() -> MQTTService:
     return AppState().mqtt_service

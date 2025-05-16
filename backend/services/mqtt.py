@@ -8,16 +8,13 @@ from typing import Optional
 
 from aiomqtt import Client, MqttError
 from fastapi import Depends
-from dotenv import load_dotenv  # ✅ assicurati di caricare .env
+from dotenv import load_dotenv
 
 from backend.services.db import (
     init_db,
-    insert_node,
-    load_nodes_from_db,
-    update_position,
-    update_nodeinfo,
     get_db_path,
 )
+from backend.services.message_handler import insert_or_update_node_from_message
 from backend.state import AppState
 
 # Carica le variabili da .env
@@ -40,7 +37,7 @@ class MQTTService:
     def __init__(self):
         self.client: Optional[Client] = None
         self.stack: Optional[AsyncExitStack] = None
-        self.nodes = {}
+        self.nodes = AppState().nodes
         self.nodes_by_id = {}
         self.state = AppState()
         self.db_path = get_db_path()
@@ -49,7 +46,7 @@ class MQTTService:
     async def start(self):
         logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
         init_db()
-        self.nodes = load_nodes_from_db()
+        #self.nodes = {}
 
         self.stack = AsyncExitStack()
         await self.stack.__aenter__()
@@ -79,7 +76,7 @@ class MQTTService:
     async def _listener(self):
         assert self.client is not None
         try:
-            messages = self.client.messages  # NON usare async with
+            messages = self.client.messages
             async for msg in messages:
                 await self._handle_message(msg.topic, msg.payload)
         except MqttError as e:
@@ -89,15 +86,19 @@ class MQTTService:
 
     async def _handle_message(self, topic, payload):
         try:
-            message = json.loads(payload.decode("utf-8"))
+            decoded = payload.decode("utf-8")
+            logger.info("📩 Payload ricevuto (UTF-8): %s", decoded)
+            message = json.loads(decoded)
         except UnicodeDecodeError as e:
             logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
+            logger.warning("📦 Payload raw: %s", payload)
             return
         except json.JSONDecodeError as e:
             logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
+            logger.warning("📄 Payload UTF-8: %s", decoded)
             return
 
-        node_id = message.get("from")
+        node_id = str(message.get("from"))
         if not node_id:
             logger.warning("Messaggio senza campo 'from': %s", message)
             return
@@ -105,24 +106,13 @@ class MQTTService:
         if node_id == self.my_node_id:
             return
 
-        cmd = message.get("cmd")
-        if cmd == "position":
-            lat = message.get("lat")
-            lon = message.get("lon")
-            if lat is not None and lon is not None:
-                last = self.nodes.get(node_id)
-                if not last or last.data.get("lat") != lat or last.data.get("lon") != lon:
-                    logger.info("📍 Posizione aggiornata per %s: (%s, %s)", node_id, lat, lon)
-                    update_position(node_id, lat, lon)
-                    self.nodes[node_id] = NodeData(name=node_id, data=message)
-        elif cmd == "nodeinfo":
-            name = message.get("name")
-            if name:
-                logger.info("ℹ️  Aggiornato nodeinfo per %s → %s", node_id, name)
-                update_nodeinfo(node_id, name)
-                self.nodes[node_id] = NodeData(name=name, data=message)
-        else:
-            logger.info("Tipo messaggio sconosciuto (%s) da %s", cmd or "", node_id)
+        if "cmd" in message:
+            logger.debug("🔁 Ignorato messaggio 'cmd' da %s: %s", node_id, message["cmd"])
+            return
+
+        logger.info("📨 Messaggio valido da %s: %s", node_id, message)
+        self.nodes[node_id] = NodeData(name=node_id, data=message)
+        insert_or_update_node_from_message(message)
 
 def get_mqtt_service() -> MQTTService:
     return AppState().mqtt_service

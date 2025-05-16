@@ -94,33 +94,15 @@ async def health() -> dict[str, str]:
 # List nodes (REST)
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/nodes")
-async def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
+def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
+    logger.info("📡 Nodi attuali in memoria: %s", list(svc.nodes.keys()))
     return {
         str(node_id): {
             "name": get_display_name(node_id),
-            "data": payload,
+            "data": payload.data,
         }
         for node_id, payload in svc.nodes.items()
     }
-
-# ────────────────────────────────────────────────────────────────────────────
-# WiFi config generator
-# ────────────────────────────────────────────────────────────────────────────
-@app.post("/wifi-config")
-async def wifi_config(cfg: WiFiConfig) -> dict[str, str]:
-    import base64, yaml
-
-    cfg_dict = {
-        "wifi": {"ssid": cfg.ssid, "password": cfg.password},
-        "mqtt": {
-            "host": cfg.broker_host or mqtt_service.client._hostname,  # type: ignore
-            "port": cfg.broker_port or mqtt_service.client._port,      # type: ignore
-        },
-    }
-    yaml_bytes = yaml.safe_dump(cfg_dict).encode()
-    b64 = base64.b64encode(yaml_bytes).decode()
-    return {"b64": b64}
-
 # ────────────────────────────────────────────────────────────────────────────
 # WebSocket streaming
 # ────────────────────────────────────────────────────────────────────────────
@@ -134,7 +116,7 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
             current = {
                 nid: {
                     "name": get_display_name(nid),
-                    "data": data.get(),
+                    "data": data.data,
                 }
                 for nid, data in svc.nodes.items()
             }

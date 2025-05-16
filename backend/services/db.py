@@ -115,25 +115,14 @@ def store_event(node_id: str, topic: str, payload: str):
     conn.commit()
     conn.close()
 
+def get_display_name(node_id: int | str) -> str:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM nodes WHERE node_id = ?", (node_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row["name"] if row and row["name"] else str(node_id)
+
 class Node(BaseModel):
     node_id: int
     name: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    altitude: Optional[float] = None
-    last_seen: Optional[str] = None
-
-def get_node_by_id(node_id: int) -> Optional[Dict[str, Any]]:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM nodes WHERE node_id = ?", (node_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return dict(row) if row else None
-
-# 🆕 AGGIUNTA: Per ottenere il nome del nodo da ID (fallback sullo stesso ID)
-from backend.state import nodes
-
-def get_display_name(node_id: str) -> str:
-    node = nodes.get(node_id)
-    return node.name if node and node.name else node_id

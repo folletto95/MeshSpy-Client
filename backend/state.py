@@ -11,6 +11,9 @@ class Node(BaseModel):
     firmware: str | None = None      # versione firmware da nodeinfo
     variant: str | None = None       # variante hardware da nodeinfo
 
+# parte vuota: verrà popolato via MQTT
+nodes: dict[str, Node] = {}
+
 # Aggiunta della classe AppState per gestione centralizzata
 class AppState:
     def __init__(self):

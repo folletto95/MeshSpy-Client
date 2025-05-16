@@ -115,6 +115,14 @@ def store_event(node_id: str, topic: str, payload: str):
     conn.commit()
     conn.close()
 
+def get_display_name(node_id: int | str) -> str:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM nodes WHERE node_id = ?", (node_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row["name"] if row and row["name"] else str(node_id)
+
 class Node(BaseModel):
     node_id: int
     name: Optional[str] = None

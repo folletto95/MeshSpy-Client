@@ -100,7 +100,10 @@ def load_nodes_from_db():
     cursor.execute("SELECT * FROM nodes")
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return {
+        str(row["id"]): NodeData(name=row.get("name", str(row["id"])), data=dict(row))
+        for row in rows
+    }
 
 def store_event(node_id: str, topic: str, payload: str):
     conn = get_db_connection()

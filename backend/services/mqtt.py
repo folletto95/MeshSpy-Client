@@ -8,8 +8,7 @@ from typing import Optional
 
 from aiomqtt import Client, MqttError
 from fastapi import Depends
-
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # ✅ assicurati di caricare .env
 
 from backend.services.db import (
     init_db,
@@ -21,6 +20,7 @@ from backend.services.db import (
 )
 from backend.state import AppState
 
+# Carica le variabili da .env
 load_dotenv()
 
 logger = logging.getLogger("meshspy.mqtt")
@@ -79,8 +79,9 @@ class MQTTService:
     async def _listener(self):
         assert self.client is not None
         try:
-            async for msg in self.client:
-                await self._handle_message(msg.topic, msg.payload)
+            async with self.client.messages() as messages:
+                async for msg in messages:
+                    await self._handle_message(msg.topic, msg.payload)
         except MqttError as e:
             logger.error("MQTT listener error: %s", e)
         finally:

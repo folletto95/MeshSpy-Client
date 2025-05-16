@@ -19,6 +19,7 @@ export default function MapView() {
   const { data: nodesData } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
+
   const fallbackCenter = [43.7162, 10.4017]; // Pisa di default
 
   const nodes = nodesData
@@ -35,7 +36,6 @@ export default function MapView() {
         })
         .filter(Boolean)
     : [];
-
   const center = nodes.length > 0
     ? [
         nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length,

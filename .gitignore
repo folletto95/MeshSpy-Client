@@ -29,7 +29,6 @@ coverage.xml
 package-lock.json
 *,cover
 frontend_files/
-zip/
 *.zip
 
 # IDE / editor settings

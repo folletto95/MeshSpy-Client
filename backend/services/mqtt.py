@@ -8,16 +8,13 @@ from typing import Optional
 
 from aiomqtt import Client, MqttError
 from fastapi import Depends
-from dotenv import load_dotenv  # ✅ assicurati di caricare .env
+from dotenv import load_dotenv
 
 from backend.services.db import (
     init_db,
-    insert_node,
-    load_nodes_from_db,
-    update_position,
-    update_nodeinfo,
     get_db_path,
 )
+from backend.services.message_handler import insert_or_update_node_from_message
 from backend.state import AppState
 
 # Carica le variabili da .env
@@ -79,7 +76,7 @@ class MQTTService:
     async def _listener(self):
         assert self.client is not None
         try:
-            messages = self.client.messages  # NON usare async with
+            messages = self.client.messages
             async for msg in messages:
                 await self._handle_message(msg.topic, msg.payload)
         except MqttError as e:
@@ -115,6 +112,7 @@ class MQTTService:
 
         logger.info("📨 Messaggio valido da %s: %s", node_id, message)
         self.nodes[node_id] = NodeData(name=node_id, data=message)
+        insert_or_update_node_from_message(message)
 
 def get_mqtt_service() -> MQTTService:
     return AppState().mqtt_service

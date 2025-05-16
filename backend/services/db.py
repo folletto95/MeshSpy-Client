@@ -1,115 +1,120 @@
-import asyncio
-import json
-import logging
 import os
-from collections import defaultdict
-from contextlib import AsyncExitStack
-from typing import Optional
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, Dict, Any
 
-from aiomqtt import Client, MqttError
-from fastapi import Depends
-from dotenv import load_dotenv  # ✅ assicurati di caricare .env
+from pydantic import BaseModel
 
-from backend.state import AppState
+DB_FOLDER = os.getenv("MESHSERVER_DB_PATH", str(Path.home() / ".meshspy_data"))
+DB_FILENAME = "node.db"
+DB_PATH = os.path.join(DB_FOLDER, DB_FILENAME)
 
-# Carica le variabili da .env
-load_dotenv()
+os.makedirs(DB_FOLDER, exist_ok=True)
 
-logger = logging.getLogger("meshspy.mqtt")
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
-MQTT_USERNAME = os.getenv("MQTT_USERNAME")
-MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+def get_db_path():
+    return DB_PATH
 
-class NodeData:
-    def __init__(self, name: str, data: dict):
-        self.name = name
-        self.data = data
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-class MQTTService:
-    def __init__(self):
-        self.client: Optional[Client] = None
-        self.stack: Optional[AsyncExitStack] = None
-        self.nodes = {}
-        self.nodes_by_id = {}
-        self.state = AppState()
-        self.db_path = get_db_path()
-        self.my_node_id = "Server-MeshSpy"
-
-    async def start(self):
-        logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
-        init_db()
-        self.nodes = {}
-
-        self.stack = AsyncExitStack()
-        await self.stack.__aenter__()
-
-        self.client = await self.stack.enter_async_context(
-            Client(
-                hostname=MQTT_HOST,
-                port=MQTT_PORT,
-                username=MQTT_USERNAME if MQTT_USERNAME else None,
-                password=MQTT_PASSWORD if MQTT_PASSWORD else None,
-                keepalive=60,
-            )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS nodes (
+            id INTEGER PRIMARY KEY,
+            node_id INTEGER UNIQUE NOT NULL,
+            name TEXT,
+            last_seen TEXT,
+            latitude REAL,
+            longitude REAL,
+            altitude REAL
         )
+        """
+    )
 
-        await self.client.subscribe(MQTT_TOPIC)
-        logger.info("Sottoscritto a %s", MQTT_TOPIC)
-        logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_HOST, MQTT_PORT)
-        logger.info("In ascolto su topic MQTT")
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            node_id TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            payload TEXT NOT NULL
+        )
+        """
+    )
 
-        asyncio.create_task(self._listener())
+    conn.commit()
+    conn.close()
 
-    async def stop(self):
-        logger.info("MQTT listener fermato")
-        if self.stack:
-            await self.stack.aclose()
+def insert_node(node_id: int, name: Optional[str] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO nodes (node_id, name, last_seen)
+        VALUES (?, ?, ?)
+        """,
+        (node_id, name, datetime.utcnow().isoformat())
+    )
+    conn.commit()
+    conn.close()
 
-    async def _listener(self):
-        assert self.client is not None
-        try:
-            messages = self.client.messages  # NON usare async with
-            async for msg in messages:
-                await self._handle_message(msg.topic, msg.payload)
-        except MqttError as e:
-            logger.error("MQTT listener error: %s", e)
-        finally:
-            await self.stop()
+def update_nodeinfo(node_id: int, name: Optional[str] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE nodes
+        SET name = ?, last_seen = ?
+        WHERE node_id = ?
+        """,
+        (name, datetime.utcnow().isoformat(), node_id)
+    )
+    conn.commit()
+    conn.close()
 
-    async def _handle_message(self, topic, payload):
-        try:
-            decoded = payload.decode("utf-8")
-            logger.info("📩 Payload ricevuto (UTF-8): %s", decoded)
-            message = json.loads(decoded)
-        except UnicodeDecodeError as e:
-            logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
-            logger.warning("📦 Payload raw: %s", payload)
-            return
-        except json.JSONDecodeError as e:
-            logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
-            logger.warning("📄 Payload UTF-8: %s", decoded)
-            return
+def update_position(node_id: int, latitude: float, longitude: float, altitude: Optional[float] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE nodes
+        SET latitude = ?, longitude = ?, altitude = ?, last_seen = ?
+        WHERE node_id = ?
+        """,
+        (latitude, longitude, altitude, datetime.utcnow().isoformat(), node_id)
+    )
+    conn.commit()
+    conn.close()
 
-        node_id = str(message.get("from"))
-        if not node_id:
-            logger.warning("Messaggio senza campo 'from': %s", message)
-            return
+def load_nodes_from_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM nodes")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
 
-        if node_id == self.my_node_id:
-            return
+def store_event(node_id: str, topic: str, payload: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO events (timestamp, node_id, topic, payload)
+        VALUES (?, ?, ?, ?)
+        """,
+        (datetime.utcnow().isoformat(), node_id, topic, payload)
+    )
+    conn.commit()
+    conn.close()
 
-        if "cmd" in message:
-            logger.debug("🔁 Ignorato messaggio 'cmd' da %s: %s", node_id, message["cmd"])
-            return
-
-        logger.info("📨 Messaggio valido da %s: %s", node_id, message)
-        self.nodes[node_id] = NodeData(name=node_id, data=message)
-        insert_or_update_node_from_message(message)
-
-def get_mqtt_service() -> MQTTService:
-    return AppState().mqtt_service
-
-mqtt_service = get_mqtt_service()
+class Node(BaseModel):
+    node_id: int
+    name: Optional[str] = None

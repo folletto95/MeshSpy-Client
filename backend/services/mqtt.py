@@ -89,12 +89,16 @@ class MQTTService:
 
     async def _handle_message(self, topic, payload):
         try:
-            message = json.loads(payload.decode("utf-8"))
+            decoded = payload.decode("utf-8")
+            logger.info("📩 Payload ricevuto (UTF-8): %s", decoded)
+            message = json.loads(decoded)
         except UnicodeDecodeError as e:
             logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
+            logger.warning("📦 Payload raw: %s", payload)
             return
         except json.JSONDecodeError as e:
             logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
+            logger.warning("📄 Payload UTF-8: %s", decoded)
             return
 
         node_id = message.get("from")

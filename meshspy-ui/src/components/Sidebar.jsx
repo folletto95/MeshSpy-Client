@@ -49,8 +49,8 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-60 bg-gradient-to-b from-meshtastic to-gray-900 text-white dark:from-gray-800 dark:to-gray-900">
-      <div className="flex items-center gap-2 px-4 py-5 text-xl font-semibold drop-shadow">
+    <aside className="w-64 h-full bg-gradient-to-b from-meshtastic to-gray-900 dark:from-gray-800 dark:to-gray-900 text-white shadow-md flex flex-col">
+    <div className="flex items-center gap-2 px-4 py-5 text-xl font-semibold drop-shadow">
         <Radio className="w-6 h-6" />
         MeshSpy
       </div>

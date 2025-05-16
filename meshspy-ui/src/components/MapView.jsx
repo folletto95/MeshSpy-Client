@@ -19,29 +19,38 @@ export default function MapView() {
   const { data: nodesData } = useNodes();
   const { mapRef, markersRef, setIsReady } = useMapContext();
 
-
   const fallbackCenter = [43.7162, 10.4017]; // Pisa di default
 
   const nodes = nodesData
     ? Object.entries(nodesData)
         .map(([id, info]) => {
-          const payload = info.data?.payload;
-          if (!payload?.latitude_i || !payload?.longitude_i) return null;
+          const payload = info.data?.payload ?? {};
+          const latRaw = payload.latitude_i ?? info.data?.latitude;
+          const lonRaw = payload.longitude_i ?? info.data?.longitude;
+          if (latRaw == null || lonRaw == null) return null;
+
           return {
             id,
-            name: info.name,
-            lat: payload.latitude_i / 1e7,
-            lon: payload.longitude_i / 1e7,
+            name:
+              payload.longname ||
+              payload.shortname ||
+              info.name ||
+              info.data?.name ||
+              id,
+            lat: latRaw / 1e7,
+            lon: lonRaw / 1e7,
           };
         })
         .filter(Boolean)
     : [];
-  const center = nodes.length > 0
-    ? [
-        nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length,
-        nodes.reduce((sum, n) => sum + n.lon, 0) / nodes.length,
-      ]
-    : fallbackCenter;
+
+  const center =
+    nodes.length > 0
+      ? [
+          nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length,
+          nodes.reduce((sum, n) => sum + n.lon, 0) / nodes.length,
+        ]
+      : fallbackCenter;
 
   return (
     <div className="h-80 rounded-2xl overflow-hidden shadow ring-1 ring-black/5">

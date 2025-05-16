@@ -10,15 +10,6 @@ from aiomqtt import Client, MqttError
 from fastapi import Depends
 from dotenv import load_dotenv  # ✅ assicurati di caricare .env
 
-from backend.services.db import (
-    init_db,
-    insert_node,
-    load_nodes_from_db,
-    update_position,
-    update_nodeinfo,
-    get_db_path,
-    insert_or_update_node_from_message,  # ✅ nuova funzione
-)
 from backend.state import AppState
 
 # Carica le variabili da .env

@@ -123,6 +123,17 @@ def get_display_name(node_id: int | str) -> str:
     conn.close()
     return row["name"] if row and row["name"] else str(node_id)
 
+def load_nodes_as_dict() -> dict:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM nodes")
+    rows = cursor.fetchall()
+    conn.close()
+    return {
+        str(row["node_id"]): NodeData(name=row["name"], data=dict(row))
+        for row in rows if row["node_id"]
+    }
+
 class Node(BaseModel):
     node_id: int
     name: Optional[str] = None

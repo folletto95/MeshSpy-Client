@@ -24,7 +24,7 @@ export default function LogViewer() {
     );
 
     ws.onerror = (e) => {
-      appendLogLine(`[client] errore WebSocket: ${e.message}`);
+      appendLogLine(`[client] errore WebSocket`);
     };
 
     return () => {

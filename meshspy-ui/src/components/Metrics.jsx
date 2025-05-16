@@ -1,52 +1,44 @@
-// meshspy-ui/src/components/Metrics.jsx
 import { RadioTower, Activity, Clock } from "lucide-react";
 import { useNodes } from "../lib/api";
 
-const metricStyle =
-  "flex items-center gap-3 p-5 bg-white rounded-2xl shadow-md hover:shadow-lg transition";
+const boxStyle =
+  "flex items-center gap-3 p-5 bg-white rounded-2xl shadow hover:shadow-md transition";
 
 export default function Metrics() {
-  const { data: nodesData, error } = useNodes();
+  const { nodes, isLoading, isError } = useNodes();
 
-  if (error) return <p className="text-red-500">Errore nel caricamento dei nodi</p>;
-  if (!nodesData) return <p>Caricamento in corso…</p>;
+  if (isError)
+    return <div className="text-red-500 mb-4">Errore caricamento nodi</div>;
 
-  const nodes = Object.entries(nodesData).map(([id, info]) => ({
-    id,
-    ...info,
-  }));
+  if (isLoading)
+    return <div className="text-gray-500 mb-4">Caricamento metriche…</div>;
 
-  const totalCount = nodes.length;
-  const onlineCount = nodes.filter((n) => n.online).length;
+  const total = Object.keys(nodes).length;
+  const online = total; // TODO: sostituire con logica reale
 
   return (
-    <section className="grid sm:grid-cols-3 gap-4">
-      {/* Nodi online */}
-      <div className={metricStyle}>
+    <section className="grid sm:grid-cols-3 gap-4 mb-4">
+      <div className={boxStyle}>
         <RadioTower className="text-meshtastic" />
         <div>
           <p className="text-sm text-gray-500">Nodi online</p>
-          <p className="text-2xl font-semibold">
-            {onlineCount} / {totalCount}
+          <p className="text-xl font-bold">
+            {online} / {total}
           </p>
         </div>
       </div>
-
-      {/* Messaggi totali (placeholder per future metrics) */}
-      <div className={metricStyle}>
+      <div className={boxStyle}>
         <Activity className="text-meshtastic" />
         <div>
           <p className="text-sm text-gray-500">Messaggi totali</p>
-          <p className="text-2xl font-semibold">—</p>
+          <p className="text-xl font-bold">—</p>
         </div>
       </div>
-
-      {/* Uptime medio */}
-      <div className={metricStyle}>
+      <div className={boxStyle}>
         <Clock className="text-meshtastic" />
         <div>
           <p className="text-sm text-gray-500">Uptime medio</p>
-          <p className="text-2xl font-semibold">—</p>
+          <p className="text-xl font-bold">—</p>
         </div>
       </div>
     </section>

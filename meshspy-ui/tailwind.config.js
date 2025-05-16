@@ -1,10 +1,11 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+// tailwind.config.js
+export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: "class", // <=== Attivazione dark mode
   theme: {
     extend: {
       colors: {
-        meshtastic: "#27ae60", // Verde acceso stile Meshtastic
+        meshtastic: "#00c853",
       },
     },
   },

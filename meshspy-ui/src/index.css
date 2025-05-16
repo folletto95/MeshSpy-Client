@@ -2,8 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .icon-green > svg {
-    @apply text-meshtastic;
+@layer base {
+  body {
+    @apply text-gray-800 bg-gray-100;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 8px;
   }
 }

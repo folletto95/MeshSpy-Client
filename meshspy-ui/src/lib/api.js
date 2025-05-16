@@ -14,10 +14,15 @@ export const fetcher = (url) =>
 
 // Hook per ottenere la lista dei nodi
 export function useNodes() {
-  return useSWR("/nodes", fetcher, {
+  const { data, error } = useSWR("/nodes", fetcher, {
     refreshInterval: 5000,
-    revalidateOnFocus: true,
   });
+
+  return {
+    nodes: data || {},
+    isLoading: !error && !data,
+    isError: error,
+  };
 }
 
 // Hook per ottenere metriche (se supportate)

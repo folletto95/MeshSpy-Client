@@ -1,125 +1,139 @@
-import sqlite3
 import os
-import logging
-from threading import Lock
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, Dict, Any
 
-logging.basicConfig(level=logging.DEBUG)
+from pydantic import BaseModel
 
-DB_DIR = os.path.expanduser("~/.meshspy_data")
-os.makedirs(DB_DIR, exist_ok=True)
-DB_PATH = os.path.join(DB_DIR, "node.db")
-_lock = Lock()
+DB_FOLDER = os.getenv("MESHSERVER_DB_PATH", str(Path.home() / ".meshspy_data"))
+DB_FILENAME = "node.db"
+DB_PATH = os.path.join(DB_FOLDER, DB_FILENAME)
+
+os.makedirs(DB_FOLDER, exist_ok=True)
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def get_db_path():
+    return DB_PATH
 
 def init_db():
-    """Crea le tabelle nodes e nodes_history se non esistono."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    with _lock, sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS nodes (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            shortname TEXT,
-            longname TEXT,
-            last_x REAL,
-            last_y REAL,
-            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id INTEGER PRIMARY KEY,
+            node_id INTEGER UNIQUE NOT NULL,
+            name TEXT,
+            last_seen TEXT,
+            latitude REAL,
+            longitude REAL,
+            altitude REAL
         )
-        """)
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS nodes_history (
-            hist_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            id TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            data TEXT,
-            ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            node_id TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            payload TEXT NOT NULL
         )
-        """)
-        conn.commit()
-        logging.debug("DB inizializzato")
+        """
+    )
 
-def register_node(node_id: str, name: str):
-    init_db()
-    with _lock, sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            INSERT INTO nodes (id, name)
-            VALUES (?, ?)
-            ON CONFLICT(id) DO NOTHING
-        """, (node_id, name))
-        conn.commit()
-        logging.debug(f"Registrato nodo: {node_id} - {name}")
+    conn.commit()
+    conn.close()
 
-def get_display_name(id: str) -> str:
-    init_db()
-    with _lock, sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute(
-            "SELECT longname, shortname FROM nodes WHERE id = ?", (id,)
-        )
-        row = cur.fetchone()
-        if row:
-            longn, short = row
-            return longn or short or id
-    return id
+def insert_node(node_id: int, name: Optional[str] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO nodes (node_id, name, last_seen)
+        VALUES (?, ?, ?)
+        """,
+        (node_id, name, datetime.utcnow().isoformat())
+    )
+    conn.commit()
+    conn.close()
 
-def upsert_nodeinfo(id: str, short: str, long: str, name: str):
-    init_db()
-    with _lock, sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            INSERT INTO nodes (id, name)
-            VALUES (?, ?)
-            ON CONFLICT(id) DO NOTHING
-        """, (id, name))
+def update_nodeinfo(node_id: int, name: Optional[str] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE nodes
+        SET name = ?, last_seen = ?
+        WHERE node_id = ?
+        """,
+        (name, datetime.utcnow().isoformat(), node_id)
+    )
+    conn.commit()
+    conn.close()
 
-        cur = conn.execute("SELECT shortname, longname FROM nodes WHERE id = ?", (id,))
-        current = cur.fetchone() or ("", "")
-        current_short, current_long = current
+def update_position(node_id: int, latitude: float, longitude: float, altitude: Optional[float] = None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE nodes
+        SET latitude = ?, longitude = ?, altitude = ?, last_seen = ?
+        WHERE node_id = ?
+        """,
+        (latitude, longitude, altitude, datetime.utcnow().isoformat(), node_id)
+    )
+    conn.commit()
+    conn.close()
 
-        new_short = short or current_short
-        new_long = long or current_long
+def load_nodes_from_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM nodes")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
 
-        if new_short != current_short or new_long != current_long:
-            conn.execute("""
-                UPDATE nodes
-                SET shortname = ?, longname = ?
-                WHERE id = ?
-            """, (new_short, new_long, id))
+def store_event(node_id: str, topic: str, payload: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO events (timestamp, node_id, topic, payload)
+        VALUES (?, ?, ?, ?)
+        """,
+        (datetime.utcnow().isoformat(), node_id, topic, payload)
+    )
+    conn.commit()
+    conn.close()
 
-        conn.execute("""
-            INSERT INTO nodes_history (id, event_type, data)
-            VALUES (?, 'nodeinfo', ?)
-        """, (id, f'{{"short": "{short}", "long": "{long}"}}'))
-        conn.commit()
-        logging.debug(f"Aggiornato nodo: {id}")
+class Node(BaseModel):
+    node_id: int
+    name: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    altitude: Optional[float] = None
+    last_seen: Optional[str] = None
 
-def update_position(id: str, x: float, y: float):
-    init_db()
-    with _lock, sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute(
-            "SELECT last_x, last_y FROM nodes WHERE id = ?", (id,)
-        )
-        row = cur.fetchone()
+def get_node_by_id(node_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM nodes WHERE node_id = ?", (node_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
-        if not row or row[0] != x or row[1] != y:
-            conn.execute("""
-                UPDATE nodes
-                SET last_x = ?, last_y = ?, last_seen = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (x, y, id))
-            conn.execute("""
-                INSERT INTO nodes_history (id, event_type, data)
-                VALUES (?, 'position', ?)
-            """, (id, f'{{"x": {x}, "y": {y}}}'))
-            conn.commit()
-            logging.debug(f"Posizione aggiornata per {id}: x={x}, y={y}")
+# 🆕 AGGIUNTA: Per ottenere il nome del nodo da ID (fallback sullo stesso ID)
+from backend.state import nodes
 
-    return {"status": "ok", "id": id, "x": x, "y": y}
-
-def store_event(id: str, event_type: str, data: str):
-    init_db()
-    with _lock, sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            INSERT INTO nodes_history (id, event_type, data)
-            VALUES (?, ?, ?)
-        """, (id, event_type, data))
-        conn.commit()
-        logging.debug(f"Evento salvato: {event_type} per {id}")
+def get_display_name(node_id: str) -> str:
+    node = nodes.get(node_id)
+    return node.name if node and node.name else node_id

@@ -13,3 +13,16 @@ class Node(BaseModel):
 
 # parte vuota: verrà popolato via MQTT
 nodes: dict[str, Node] = {}
+
+# Aggiunta della classe AppState per gestione centralizzata
+class AppState:
+    def __init__(self):
+        self.nodes: dict[str, Node] = nodes
+        self._mqtt_service = None
+
+    @property
+    def mqtt_service(self):
+        if self._mqtt_service is None:
+            from backend.services.mqtt import MQTTService  # Import lazy QUI
+            self._mqtt_service = MQTTService()
+        return self._mqtt_service

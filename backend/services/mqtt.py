@@ -17,7 +17,7 @@ from backend.services.db import (
 )
 
 # ────────────────────────────────────────────────────────────────────────────
-# Carica .env (project root, due livelli sopra)
+# Caricamento .env (project root, due livelli sopra questo file)
 # ────────────────────────────────────────────────────────────────────────────
 ENV_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, ".env")

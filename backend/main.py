@@ -1,4 +1,5 @@
-# backend/main.py
+"""MeshSpy backend entrypoint (FastAPI)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,36 +21,44 @@ from backend.services.db import get_display_name
 from backend.routes import ws_logs
 
 # ────────────────────────────────────────────────────────────────────────────
-# .env & logging
+# Caricamento .env & logging
 # ────────────────────────────────────────────────────────────────────────────
-# .env si trova due livelli sopra (project root)
-ROOT_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT_DIR / ".env")
+# .env si trova due livelli sopra questo file (all root del progetto)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(levelname)s | %(name)s | %(message)s",
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("meshspy.main")
 
+api_router = APIRouter()
+
 # ────────────────────────────────────────────────────────────────────────────
-# FastAPI app con lifespan
+# Lifespan lifecycle: avvio/arresto MQTT
 # ────────────────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Avvia in background il listener MQTT
+    # Avvia il listener in background all’avvio dell’app
     asyncio.create_task(mqtt_service.start())
     logger.info("MQTT listener avviato in background")
     yield
+    # Al termine, ferma il listener
     await mqtt_service.stop()
     logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
 
-# Include il router per lo streaming dei log
+# ────────────────────────────────────────────────────────────────────────────
+# Includi eventuali router aggiuntivi (es. ws_logs)
+# ────────────────────────────────────────────────────────────────────────────
 app.include_router(ws_logs.router)
 
-# CORS (sviluppo); restringere in produzione!
+# ────────────────────────────────────────────────────────────────────────────
+# CORS (solo sviluppo; in prod restringi allow_origins)
+# ────────────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,7 +67,7 @@ app.add_middleware(
 )
 
 # ────────────────────────────────────────────────────────────────────────────
-# Endpoint Prometheus
+# Prometheus metrics
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> PlainTextResponse:
@@ -66,11 +75,11 @@ async def metrics() -> PlainTextResponse:
     return PlainTextResponse(data, media_type=CONTENT_TYPE_LATEST)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Static GUI root
+# Static GUI root (serve index.html se presente)
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/")
 async def root() -> FileResponse | PlainTextResponse:
-    index = ROOT_DIR / "static" / "index.html"
+    index = PROJECT_ROOT / "backend" / "static" / "index.html"
     return FileResponse(index) if index.exists() else PlainTextResponse("MeshSpy API")
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -105,26 +114,9 @@ async def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
         for node_id, payload in svc.nodes.items()
     }
 
-# ────────────────────────────────────────────────────────────────────────────
-# WiFi config generator
-# ────────────────────────────────────────────────────────────────────────────
-@app.post("/wifi-config")
-async def wifi_config(cfg: WiFiConfig) -> dict[str, str]:
-    cfg_dict = {
-        "wifi": {"ssid": cfg.ssid, "password": cfg.password},
-        "mqtt": {
-            "host": cfg.broker_host or mqtt_service.client._hostname,  # type: ignore
-            "port": cfg.broker_port or mqtt_service.client._port,      # type: ignore
-        },
-    }
-    import base64, yaml
-
-    yaml_bytes = yaml.safe_dump(cfg_dict).encode()
-    b64 = base64.b64encode(yaml_bytes).decode()
-    return {"b64": b64}
 
 # ────────────────────────────────────────────────────────────────────────────
-# WebSocket streaming nodi
+# WebSocket streaming dei nodi
 # ────────────────────────────────────────────────────────────────────────────
 @app.websocket("/ws/nodes")
 async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
@@ -136,9 +128,9 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
             current = {
                 nid: {
                     "name": get_display_name(nid),
-                    "data": data.get(),
+                    "data": node.data,
                 }
-                for nid, data in svc.nodes.items()
+                for nid, node in svc.nodes.items()
             }
             if current != last:
                 await ws.send_json(current)
@@ -152,7 +144,9 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
 # Request location (POST)
 # ────────────────────────────────────────────────────────────────────────────
 @app.post("/request-location")
-async def request_location(data: RequestLocation, svc=Depends(get_mqtt_service)):
+async def request_location(
+    data: RequestLocation, svc=Depends(get_mqtt_service)
+) -> dict[str, str]:
     topic = f"mesh/request/{data.node_id}/location"
     payload = json.dumps({"cmd": "request_position"})
     if svc.client:

@@ -17,12 +17,24 @@ export default function Sidebar() {
 
   const nodes = nodesData
     ? Object.entries(nodesData).map(([id, info]) => {
-        const posLat = info.data?.payload?.latitude_i ?? info.data?.latitude;
-        const posLng = info.data?.payload?.longitude_i ?? info.data?.longitude;
+        const payload = info.data?.payload ?? {};
+        const name =
+          payload.longname ||
+          payload.shortname ||
+          info.name ||
+          info.data?.name ||
+          id;
+
+        const posLat =
+          payload.latitude_i ?? info.data?.latitude ?? null;
+        const posLng =
+          payload.longitude_i ?? info.data?.longitude ?? null;
+
         const hasPos = posLat != null && posLng != null;
+
         return {
           id,
-          name: info.name ?? "(senza nome)",
+          name,
           hasPos,
         };
       })
@@ -51,13 +63,15 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 h-full bg-gradient-to-b from-meshtastic to-gray-900 dark:from-gray-800 dark:to-gray-900 text-white shadow-md flex flex-col">
-    <div className="flex items-center gap-2 px-4 py-5 text-xl font-semibold drop-shadow">
+      <div className="flex items-center gap-2 px-4 py-5 text-xl font-semibold drop-shadow">
         <Radio className="w-6 h-6" />
         MeshSpy
       </div>
       <nav className="mt-2 flex-1 overflow-auto space-y-1">
         {nodes.length === 0 ? (
-          <div className="px-4 py-2 text-gray-400">Nessun nodo disponibile</div>
+          <div className="px-4 py-2 text-gray-400">
+            Nessun nodo disponibile
+          </div>
         ) : (
           nodes.map((n) => (
             <div

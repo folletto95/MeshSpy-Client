@@ -37,7 +37,7 @@ class MQTTService:
     def __init__(self):
         self.client: Optional[Client] = None
         self.stack: Optional[AsyncExitStack] = None
-        self.nodes = {}
+        self.nodes = AppState().nodes
         self.nodes_by_id = {}
         self.state = AppState()
         self.db_path = get_db_path()

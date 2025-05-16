@@ -101,7 +101,7 @@ class MQTTService:
             logger.warning("📄 Payload UTF-8: %s", decoded)
             return
 
-        node_id = message.get("from")
+        node_id = str(message.get("from"))
         if not node_id:
             logger.warning("Messaggio senza campo 'from': %s", message)
             return

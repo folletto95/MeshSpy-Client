@@ -6,11 +6,21 @@ from typing import Optional, Dict, Any
 
 from pydantic import BaseModel
 
+from backend.models.node_data import NodeData
+
 DB_FOLDER = os.getenv("MESHSERVER_DB_PATH", str(Path.home() / ".meshspy_data"))
 DB_FILENAME = "node.db"
 DB_PATH = os.path.join(DB_FOLDER, DB_FILENAME)
 
 os.makedirs(DB_FOLDER, exist_ok=True)
+
+def load_nodes_as_dict():
+    # ... codice per connettersi al database e recuperare i nodi ...
+    nodes = {}
+    for row in cursor.fetchall():
+        node_id = str(row["node_id"])
+        nodes[node_id] = NodeData(name=row["name"], data=dict(row))
+    return nodes
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)

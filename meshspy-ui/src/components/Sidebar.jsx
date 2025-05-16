@@ -25,18 +25,12 @@ export default function Sidebar() {
           info.data?.name ||
           id;
 
-        const posLat =
-          payload.latitude_i ?? info.data?.latitude ?? null;
-        const posLng =
-          payload.longitude_i ?? info.data?.longitude ?? null;
+        const posLat = payload.latitude_i ?? info.data?.latitude;
+        const posLng = payload.longitude_i ?? info.data?.longitude;
 
         const hasPos = posLat != null && posLng != null;
 
-        return {
-          id,
-          name,
-          hasPos,
-        };
+        return { id, name, hasPos };
       })
     : [];
 

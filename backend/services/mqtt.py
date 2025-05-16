@@ -17,12 +17,10 @@ from backend.services.db import (
 )
 
 # ────────────────────────────────────────────────────────────────────────────
-# Caricamento .env (project root, due livelli sopra questo file)
+# Carica .env
 # ────────────────────────────────────────────────────────────────────────────
-ENV_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, ".env")
-)
-load_dotenv(ENV_PATH)
+ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 logger = logging.getLogger("meshspy.mqtt")
 
@@ -41,15 +39,21 @@ class NodeData:
 
 class MQTTService:
     def __init__(self) -> None:
-        # Inizializza il DB e carica lo storico dei nodi
+        # Carica dallo storico DB all’avvio, gestendo node_id o id
         init_db()
         raw = load_nodes_from_db()
+
         self.nodes: Dict[str, NodeData] = {}
         for r in raw:
-            key = r.get("node_id") or r.get("id")
-            if not key:
+            # se esiste 'node_id' usalo, altrimenti usa 'id'
+            node_key = r.get("node_id") if r.get("node_id") is not None else r.get("id")
+            if node_key is None:
                 continue
-            self.nodes[str(key)] = NodeData(name=r.get("name", ""), data={})
+            key_str = str(node_key)
+            self.nodes[key_str] = NodeData(
+                name=r.get("name", ""),
+                data={}
+            )
 
         self.client: Optional[Client] = None
         self._stack: Optional[AsyncExitStack] = None
@@ -58,53 +62,31 @@ class MQTTService:
 
     async def start(self) -> None:
         logger.info("🗄️  DB path MQTT: %s", self.db_path)
-        attempts = 0
 
-        # Retry esponenziale finché il broker non risponde
-        while True:
-            try:
-                self._stack = AsyncExitStack()
-                await self._stack.__aenter__()
+        self._stack = AsyncExitStack()
+        await self._stack.__aenter__()
 
-                logger.info(
-                    "🔌 Tentativo connessione MQTT a %s:%s (topic %r)",
-                    MQTT_HOST, MQTT_PORT, MQTT_TOPIC,
-                )
-                self.client = await self._stack.enter_async_context(
-                    Client(
-                        hostname=MQTT_HOST,
-                        port=MQTT_PORT,
-                        username=MQTT_USERNAME or None,
-                        password=MQTT_PASSWORD or None,
-                        keepalive=60,
-                    )
-                )
+        # connessione
+        self.client = await self._stack.enter_async_context(
+            Client(
+                hostname=MQTT_HOST,
+                port=MQTT_PORT,
+                username=MQTT_USERNAME or None,
+                password=MQTT_PASSWORD or None,
+                keepalive=60,
+            )
+        )
 
-                await self.client.subscribe(MQTT_TOPIC)
-                logger.info(
-                    "✅ Connesso al broker %s:%s, sottoscritto a %r",
-                    MQTT_HOST, MQTT_PORT, MQTT_TOPIC,
-                )
+        await self.client.subscribe(MQTT_TOPIC)
+        logger.info("✅ MQTT connesso a %s:%s su topic %r", MQTT_HOST, MQTT_PORT, MQTT_TOPIC)
 
-                # Avvia il listener in background
-                asyncio.create_task(self._listener(), name="mqtt-listener")
-                return
-
-            except MqttError as exc:
-                attempts += 1
-                delay = min(60, 2 ** attempts)
-                logger.error(
-                    "❌ Connessione MQTT fallita (tentativo #%d): %s; riprovo tra %ds",
-                    attempts, exc, delay,
-                )
-                if self._stack:
-                    await self._stack.aclose()
-                await asyncio.sleep(delay)
+        # avvia listener
+        asyncio.create_task(self._listener(), name="mqtt-listener")
 
     async def stop(self) -> None:
         if self._stack:
             await self._stack.aclose()
-        logger.info("🛑 MQTT listener fermato")
+        logger.info("MQTT listener fermato")
 
     async def _listener(self) -> None:
         assert self.client is not None
@@ -118,7 +100,7 @@ class MQTTService:
         try:
             message = json.loads(payload.decode("utf-8"))
         except Exception as e:
-            logger.warning("❓ Payload non JSON su %s: %s", topic, e)
+            logger.warning("Payload non valido su %s: %s", topic, e)
             return
 
         node_id = message.get("from")
@@ -139,10 +121,10 @@ class MQTTService:
                 update_nodeinfo(node_id, name)
                 self.nodes[node_id] = NodeData(name=name, data=message)
         else:
-            logger.debug("🔄 Msg sconosciuto (%s) da %s", cmd or "", node_id)
+            logger.debug("Tipo messaggio sconosciuto (%s) da %s", cmd or "", node_id)
 
 
-# Singleton e dependency
+# Singleton e dependency -------------------------------------------------------
 mqtt_service = MQTTService()
 
 def get_mqtt_service() -> MQTTService:

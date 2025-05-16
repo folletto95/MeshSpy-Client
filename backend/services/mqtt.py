@@ -17,7 +17,7 @@ from backend.services.db import (
 )
 
 # ────────────────────────────────────────────────────────────────────────────
-# Carica .env dal progetto
+# Carica .env
 # ────────────────────────────────────────────────────────────────────────────
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
@@ -30,33 +30,38 @@ MQTT_TOPIC = os.getenv("MQTT_TOPIC", "meshspy/nodes/#")
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 
-# ────────────────────────────────────────────────────────────────────────────
-# Data holder
-# ────────────────────────────────────────────────────────────────────────────
+
 class NodeData:
     def __init__(self, name: str, data: dict):
         self.name = name
         self.data = data
 
-# ────────────────────────────────────────────────────────────────────────────
-# Il nostro singleton MQTTService
-# ────────────────────────────────────────────────────────────────────────────
+
 class MQTTService:
     def __init__(self) -> None:
+        # Carica dallo storico DB all’avvio, gestendo node_id o id
+        init_db()
+        raw = load_nodes_from_db()
+
+        self.nodes: Dict[str, NodeData] = {}
+        for r in raw:
+            # se esiste 'node_id' usalo, altrimenti usa 'id'
+            node_key = r.get("node_id") if r.get("node_id") is not None else r.get("id")
+            if node_key is None:
+                continue
+            key_str = str(node_key)
+            self.nodes[key_str] = NodeData(
+                name=r.get("name", ""),
+                data={}
+            )
+
         self.client: Optional[Client] = None
         self._stack: Optional[AsyncExitStack] = None
-        # carica dallo storico DB all’avvio
-        raw = load_nodes_from_db()
-        self.nodes: Dict[str, NodeData] = {
-            str(r["node_id"]): NodeData(name=r.get("name", ""), data={})
-            for r in raw
-        }
         self.db_path = get_db_path()
         self.my_node_id = "Server-MeshSpy"
 
     async def start(self) -> None:
         logger.info("🗄️  DB path MQTT: %s", self.db_path)
-        init_db()
 
         self._stack = AsyncExitStack()
         await self._stack.__aenter__()
@@ -73,7 +78,7 @@ class MQTTService:
         )
 
         await self.client.subscribe(MQTT_TOPIC)
-        logger.info("✅ MQTT connesso a %s:%s, topic %r", MQTT_HOST, MQTT_PORT, MQTT_TOPIC)
+        logger.info("✅ MQTT connesso a %s:%s su topic %r", MQTT_HOST, MQTT_PORT, MQTT_TOPIC)
 
         # avvia listener
         asyncio.create_task(self._listener(), name="mqtt-listener")
@@ -92,34 +97,34 @@ class MQTTService:
             logger.error("Errore MQTT listener: %s", e)
 
     async def _handle_message(self, topic: str, payload: bytes) -> None:
-        # parsing JSON
         try:
-            msg = json.loads(payload.decode())
+            message = json.loads(payload.decode("utf-8"))
         except Exception as e:
-            logger.warning("Payload non JSON su %s: %s", topic, e)
+            logger.warning("Payload non valido su %s: %s", topic, e)
             return
 
-        node_id = str(msg.get("from") or msg.get("node_id"))
+        node_id = message.get("from")
         if not node_id or node_id == self.my_node_id:
             return
 
-        cmd = msg.get("cmd")
+        cmd = message.get("cmd")
         if cmd == "position":
-            lat, lon = msg.get("lat"), msg.get("lon")
+            lat, lon = message.get("lat"), message.get("lon")
             if lat is not None and lon is not None:
                 logger.info("📍 Posizione %s → (%s, %s)", node_id, lat, lon)
                 update_position(node_id, lat, lon)
-                self.nodes[node_id] = NodeData(name=node_id, data=msg)
+                self.nodes[node_id] = NodeData(name=node_id, data=message)
         elif cmd == "nodeinfo":
-            name = msg.get("name")
+            name = message.get("name")
             if name:
                 logger.info("ℹ️  Nodeinfo %s → %s", node_id, name)
                 update_nodeinfo(node_id, name)
-                self.nodes[node_id] = NodeData(name=name, data=msg)
+                self.nodes[node_id] = NodeData(name=name, data=message)
         else:
-            logger.debug("MQTT msg sconosciuto %r da %s", cmd, node_id)
+            logger.debug("Tipo messaggio sconosciuto (%s) da %s", cmd or "", node_id)
 
-# singleton e dependency
+
+# Singleton e dependency -------------------------------------------------------
 mqtt_service = MQTTService()
 
 def get_mqtt_service() -> MQTTService:

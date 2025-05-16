@@ -49,7 +49,7 @@ class MQTTService:
     async def start(self):
         logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
         init_db()
-        self.nodes = load_nodes_from_db()
+        self.nodes = {}
 
         self.stack = AsyncExitStack()
         await self.stack.__aenter__()

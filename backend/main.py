@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, WebSocket, APIRouter
+from fastapi import Depends, FastAPI, WebSocket, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, FileResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
@@ -134,28 +134,17 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
         await ws.close()
 
 # ────────────────────────────────────────────────────────────────────────────
-# Request location (POST)
+# Richiesta posizione a nodo specifico (POST)
 # ────────────────────────────────────────────────────────────────────────────
-@app.post("/request-location")
-async def request_location(data: RequestLocation, svc=Depends(get_mqtt_service)):
-    topic = f"mesh/request/{data.node_id}/location"
-    payload = json.dumps({"cmd": "request_position"})
-    if svc.client:
-        await svc.client.publish(topic, payload.encode())
-        logger.info("Comando 'request_position' inviato a %s su topic %s", data.node_id, topic)
-    else:
-        logger.error("MQTT client non inizializzato, impossibile inviare comando.")
-    return {"status": "ok", "requested": data.node_id}
-
-
 @app.post("/request-position")
 async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):
     topic = f"mesh/request/{data.node_id}/location"
     payload = json.dumps({"cmd": "request_position"})
-    if svc.client:
-        await svc.client.publish(topic, payload.encode())
-        logger.info("Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
-        return {"status": "ok", "requested": data.node_id}
-    else:
-        logger.error("MQTT client non inizializzato.")
-        return {"status": "error", "reason": "MQTT client not initialized"}
+
+    if not svc.client or not getattr(svc.client, "is_connected", True):
+        logger.warning("⛔ MQTT non pronto, rifiuto comando.")
+        raise HTTPException(status_code=503, detail="MQTT client not ready")
+
+    await svc.client.publish(topic, payload.encode())
+    logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
+    return {"status": "ok", "requested": data.node_id}

@@ -148,3 +148,21 @@ async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service))
     await svc.client.publish(topic, payload.encode())
     logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
     return {"status": "ok", "requested": data.node_id}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# MQTT test endpoint
+# ────────────────────────────────────────────────────────────────────────────
+@app.get("/mqtt-test")
+async def mqtt_test(svc=Depends(get_mqtt_service)):
+    test_topic = "test/topic"
+    test_payload = "Messaggio test da MeshSpy 🚀"
+
+    if not svc.client or not getattr(svc.client, "is_connected", True):
+        logger.error("⛔ MQTT non pronto, impossibile inviare messaggio test.")
+        raise HTTPException(status_code=503, detail="MQTT client non connesso")
+
+    await svc.client.publish(test_topic, test_payload.encode())
+    logger.info("📤 Messaggio MQTT inviato a '%s': '%s'", test_topic, test_payload)
+
+    return {"status": "ok", "topic": test_topic, "payload": test_payload}

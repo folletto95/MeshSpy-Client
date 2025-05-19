@@ -135,4 +135,11 @@ class MQTTService:
 def get_mqtt_service() -> MQTTService:
     return AppState().mqtt_service
 
+async def test_publish(self, topic="test/topic", payload="MQTT test da MeshSpy"):
+    if self.client:
+        await self.client.publish(topic, payload)
+        logger.info(f"📤 Messaggio MQTT inviato su '{topic}': '{payload}'")
+    else:
+        logger.error("❌ MQTT non connesso, impossibile inviare il messaggio.")
+
 mqtt_service = get_mqtt_service()

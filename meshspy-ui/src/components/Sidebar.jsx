@@ -5,8 +5,6 @@ import { addLogLine } from "./LogViewer";
 export default function Sidebar() {
   const { nodes, mapRef, markersRef } = useMap();
 
-  console.log("🧭 nodi in Sidebar:", nodes); // DEBUG
-
   const handleClick = async (node) => {
     if (node.hasPosition) {
       const marker = markersRef.current[node.id];

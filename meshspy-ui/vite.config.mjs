@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0", // accesso da fuori
     port: 5173,
+      allowedHosts: ["smpisa.ddns.net"], // 👈 aggiunta importante
     proxy: {
       "/api": {
         target: "http://localhost:8000",

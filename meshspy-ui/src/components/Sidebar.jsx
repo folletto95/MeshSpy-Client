@@ -1,6 +1,7 @@
 import { useMap } from "../lib/MapContext";
 import { Radio, MapPin, HelpCircle } from "lucide-react";
 import { addLogLine } from "./LogViewer";
+import { requestNodePosition } from "../lib/api";
 
 export default function Sidebar() {
   const { nodes, mapRef, markersRef } = useMap();
@@ -19,7 +20,7 @@ export default function Sidebar() {
     } else {
       addLogLine(`📡 Richiesta posizione per nodo ${node.id} (${node.name})`);
       try {
-        await fetch(`/request-location/${node.id}`, { method: "POST" });
+        await requestNodePosition(node.id);
       } catch (err) {
         addLogLine(`❌ Errore richiesta posizione: ${err.message}`);
       }

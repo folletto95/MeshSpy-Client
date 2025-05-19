@@ -2,6 +2,7 @@ import { useMap } from "../lib/MapContext";
 import { Radio, MapPin, HelpCircle } from "lucide-react";
 import { addLogLine } from "./LogViewer";
 import { requestNodePosition } from "../lib/api";
+import NodeActions from "./NodeActions";
 
 export default function Sidebar() {
   const { nodes, mapRef, markersRef } = useMap();
@@ -45,14 +46,17 @@ export default function Sidebar() {
               className="flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded cursor-pointer"
               onClick={() => handleClick(n)}
             >
-              <span className="flex-1 truncate flex items-center gap-2">
-                {n.hasPosition ? (
-                  <MapPin className="w-4 h-4 text-lime-400" />
-                ) : (
-                  <HelpCircle className="w-4 h-4 text-gray-400" />
-                )}
-                {n.name}
-              </span>
+              <div className="flex-1 truncate">
+                <div className="flex items-center gap-2">
+                  {n.hasPosition ? (
+                    <MapPin className="w-4 h-4 text-lime-400" />
+                  ) : (
+                    <HelpCircle className="w-4 h-4 text-gray-400" />
+                  )}
+                  {n.name}
+                </div>
+                <NodeActions node={n} />
+              </div>
             </div>
           ))
         )}

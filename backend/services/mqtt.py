@@ -114,7 +114,19 @@ class MQTTService:
             return
 
         logger.info("📨 Messaggio valido da %s: %s", node_id, message)
-        self.nodes[node_id] = NodeData(name=node_id, data=message)
+
+        # Unione intelligente dei dati
+        old_data = self.nodes.get(node_id)
+        merged_data = {}
+        if old_data:
+            merged_data.update(old_data.data)
+
+        for key, value in message.items():
+            if value is not None:
+                merged_data[key] = value
+
+        self.nodes[node_id] = NodeData(name=node_id, data=merged_data)
+
         insert_or_update_node_from_message(message)
 
 def get_mqtt_service() -> MQTTService:

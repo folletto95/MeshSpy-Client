@@ -55,3 +55,15 @@ export async function createWifiYaml(data) {
     throw new Error(`Fetch error ${res.status} for ${API}/wifi-config`);
   return res.json();
 }
+
+// Richiede la posizione da un nodo specifico
+export async function requestNodePosition(node_id) {
+  const res = await fetch(API + "/request-position", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ node_id }),
+  });
+  if (!res.ok)
+    throw new Error(`Fetch error ${res.status} for ${API}/request-position`);
+  return res.json();
+}

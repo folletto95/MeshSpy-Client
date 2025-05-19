@@ -10,7 +10,7 @@ export function MapProvider({ children }) {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodes, setNodes] = useState([]);
 
-  const { data: rawData } = useNodes();
+  const { data: rawData, isLoading, isError } = useNodes();
 
   useEffect(() => {
     if (!rawData) return;
@@ -51,8 +51,10 @@ export function MapProvider({ children }) {
         selectedNodeId,
         setSelectedNodeId,
         nodes,
-      }}
-    >
+        isLoading,
+      isError, // ✅ passa anche questi due
+  }}
+>
       {children}
     </MapContext.Provider>
   );

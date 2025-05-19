@@ -10,7 +10,7 @@ export function MapProvider({ children }) {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodes, setNodes] = useState([]);
 
-  const { data: rawData, isLoading, isError } = useNodes();
+  const { nodes: rawData, isLoading, isError } = useNodes();
 
   useEffect(() => {
     if (!rawData) return;

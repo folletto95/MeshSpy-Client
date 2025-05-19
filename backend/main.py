@@ -95,7 +95,6 @@ async def health() -> dict[str, str]:
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/nodes")
 def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
-    logger.info("📡 Nodi attuali in memoria: %s", list(svc.nodes.keys()))
     return {
         str(node_id): {
             "name": get_display_name(node_id),

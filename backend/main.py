@@ -1,4 +1,3 @@
-# backend/main.py
 from __future__ import annotations
 
 import asyncio
@@ -19,6 +18,7 @@ from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
 from backend.metrics import nodes_total, nodes_with_gps
+from backend.state import AppState
 
 api_router = APIRouter()
 
@@ -37,21 +37,17 @@ logger = logging.getLogger("meshspy.main")
 # ────────────────────────────────────────────────────────────────────────────
 # FastAPI app with lifespan
 # ────────────────────────────────────────────────────────────────────────────
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from backend.services.db import load_nodes_as_dict
-    AppState().nodes.update(load_nodes_as_dict())  # Restore nodi da DB
+    AppState().nodes.update(load_nodes_as_dict())  # ✅ ripristina i nodi dal DB
+    logger.info("📦 Nodi caricati dal DB all'avvio")
     asyncio.create_task(mqtt_service.start())
     logger.info("MQTT listener avviato in background")
     yield
     await mqtt_service.stop()
     logger.info("MQTT listener fermato")
-await mqtt_service.stop()
-    logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
-
 app.include_router(ws_logs.router)
 
 app.add_middleware(
@@ -111,6 +107,7 @@ def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
         }
         for node_id, payload in svc.nodes.items()
     }
+
 # ────────────────────────────────────────────────────────────────────────────
 # WebSocket streaming
 # ────────────────────────────────────────────────────────────────────────────

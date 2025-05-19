@@ -28,11 +28,11 @@ def insert_or_update_node_from_message(message: dict):
 
         # Prova alternativa se lat/lon sono nel payload come interi
         payload = message.get("payload", {})
-        if not lat and "latitude_i" in payload:
+        if lat in (None, 0) and "latitude_i" in payload:
             lat = payload["latitude_i"] / 1e7
-        if not lon and "longitude_i" in payload:
+        if lat in (None, 0) and "longitude_i" in payload:
             lon = payload["longitude_i"] / 1e7
-        if not alt and "altitude" in payload:
+        if lat in (None, 0) and "altitude" in payload:
             alt = payload["altitude"]
 
         if lat not in (None, 0) and lon not in (None, 0):

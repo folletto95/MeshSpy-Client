@@ -88,3 +88,15 @@ fammi sapere. Posso aiutarti a:
 💡 Tradurle in segnali chiari per operatori al chiosco
 
 Tienimi aggiornato quando hai deciso lo schema delle metriche che esponi, e ci colleghiamo da lì.
+
+
+📌 Cosa serve nel backend?
+Il backend deve avere una route:
+
+bash
+Copia
+Modifica
+POST /send-command
+con supporto per node_id e command, da pubblicare su MQTT. Posso aiutarti a implementarla se vuoi.
+
+Fammi sapere se stampiamo i file o passiamo al backend.

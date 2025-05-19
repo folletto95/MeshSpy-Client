@@ -34,7 +34,7 @@ def insert_or_update_node_from_message(message: dict):
     if name:
         updates.append("name = ?")
         params.append(name)
-    if lat is not None and lon is not None:
+    if lat not in (None, 0) and lon not in (None, 0):
         updates.extend(["latitude = ?", "longitude = ?"])
         params.extend([lat, lon])
         if alt is not None:

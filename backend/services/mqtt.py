@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from backend.services.db import (
     init_db,
     get_db_path,
+    load_nodes_as_dict,
 )
 from backend.services.message_handler import insert_or_update_node_from_message
 from backend.state import AppState
@@ -46,7 +47,7 @@ class MQTTService:
     async def start(self):
         logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
         init_db()
-        #self.nodes = {}
+        self.nodes.update(load_nodes_as_dict())
 
         self.stack = AsyncExitStack()
         await self.stack.__aenter__()

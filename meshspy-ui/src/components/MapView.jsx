@@ -1,80 +1,57 @@
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useNodes } from "../lib/api";
-import { useMapContext } from "../lib/MapContext";
+import React, { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
+import { useMap } from "../lib/MapContext";
 
 export default function MapView() {
-  const { data: nodesData } = useNodes();
-  const { mapRef, markersRef, setIsReady } = useMapContext();
+  const { mapRef, markersRef, nodes, isReady, setIsReady, selectedNodeId } = useMap();
 
+  useEffect(() => {
+    if (!mapRef.current) {
+      mapRef.current = L.map("map").setView([43.7167, 10.4000], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(mapRef.current);
+      setIsReady(true);
+    }
+  }, []);
 
-  const fallbackCenter = [43.7162, 10.4017]; // Pisa di default
+  useEffect(() => {
+    if (!isReady) return;
 
-  const nodes = nodesData
-    ? Object.entries(nodesData)
-        .map(([id, info]) => {
-          const payload = info.data?.payload;
-          if (!payload?.latitude_i || !payload?.longitude_i) return null;
-          return {
-            id,
-            name: info.name,
-            lat: payload.latitude_i / 1e7,
-            lon: payload.longitude_i / 1e7,
-          };
-        })
-        .filter(Boolean)
-    : [];
-  const center = nodes.length > 0
-    ? [
-        nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length,
-        nodes.reduce((sum, n) => sum + n.lon, 0) / nodes.length,
-      ]
-    : fallbackCenter;
+    nodes.forEach((node) => {
+      const marker = markersRef.current[node.id];
 
-  return (
-    <div className="h-80 rounded-2xl overflow-hidden shadow ring-1 ring-black/5">
-      <MapContainer
-        center={center}
-        zoom={6}
-        className="h-full w-full"
-        whenCreated={(map) => {
-          mapRef.current = map;
-          setIsReady(true);
-        }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {nodes.map((n) => (
-          <Marker
-            key={n.id}
-            position={[n.lat, n.lon]}
-            ref={(el) => {
-              if (el) markersRef.current[n.id] = el;
-            }}
-          >
-            <Popup>
-              <div className="font-semibold">{n.name}</div>
-              <div className="text-sm text-gray-500">
-                {n.lat.toFixed(5)}, {n.lon.toFixed(5)}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-    </div>
-  );
+      if (node.hasPosition) {
+        const latLng = [node.latitude, node.longitude];
+
+        if (!marker) {
+          const newMarker = L.marker(latLng).addTo(mapRef.current).bindPopup(node.name);
+          markersRef.current[node.id] = newMarker;
+        } else {
+          marker.setLatLng(latLng);
+        }
+      } else {
+        // se non ha posizione, rimuovi il marker se esiste
+        if (marker) {
+          mapRef.current.removeLayer(marker);
+          delete markersRef.current[node.id];
+        }
+      }
+    });
+  }, [nodes, isReady]);
+
+  useEffect(() => {
+    if (!isReady || !selectedNodeId) return;
+
+    const marker = markersRef.current[selectedNodeId];
+    if (marker) {
+      marker.openPopup();
+      mapRef.current.flyTo(marker.getLatLng(), 17);
+    } else {
+      console.log(`[client] ❌ Marker non trovato per ${selectedNodeId}`);
+    }
+  }, [selectedNodeId, isReady]);
+
+  return <div id="map" className="h-full w-full" />;
 }

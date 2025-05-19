@@ -25,7 +25,8 @@ def insert_or_update_node_from_message(message: dict):
         lon = message.get("lon")
         alt = message.get("altitude")
     elif msg_type == "nodeinfo":
-        name = message.get("name")
+        payload = message.get("payload", {})
+        name = payload.get("longname") or payload.get("shortname")
 
     updates = []
     params = []

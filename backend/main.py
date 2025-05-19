@@ -146,3 +146,16 @@ async def request_location(data: RequestLocation, svc=Depends(get_mqtt_service))
     else:
         logger.error("MQTT client non inizializzato, impossibile inviare comando.")
     return {"status": "ok", "requested": data.node_id}
+
+
+@app.post("/request-position")
+async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):
+    topic = f"mesh/request/{data.node_id}/location"
+    payload = json.dumps({"cmd": "request_position"})
+    if svc.client:
+        await svc.client.publish(topic, payload.encode())
+        logger.info("Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
+        return {"status": "ok", "requested": data.node_id}
+    else:
+        logger.error("MQTT client non inizializzato.")
+        return {"status": "error", "reason": "MQTT client not initialized"}

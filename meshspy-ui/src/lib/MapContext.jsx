@@ -15,6 +15,8 @@ export function MapProvider({ children }) {
   useEffect(() => {
     if (!rawData) return;
 
+    console.log("🔍 rawData ricevuto:", rawData); // DEBUG
+
     const result = Object.entries(rawData).map(([id, info]) => {
       const payload = info.data?.payload ?? {};
       const latRaw = payload.latitude_i ?? info.data?.latitude;
@@ -52,9 +54,9 @@ export function MapProvider({ children }) {
         setSelectedNodeId,
         nodes,
         isLoading,
-      isError, // ✅ passa anche questi due
-  }}
->
+        isError,
+      }}
+    >
       {children}
     </MapContext.Provider>
   );

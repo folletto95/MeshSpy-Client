@@ -8,7 +8,7 @@ export default function MapView() {
 
   useEffect(() => {
     if (!mapRef.current) {
-      mapRef.current = L.map("map").setView([43.7167, 10.4000], 13);
+      mapRef.current = L.map("map").setView([43.7167, 10.4], 12);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(mapRef.current);
@@ -20,30 +20,25 @@ export default function MapView() {
     if (!isReady) return;
 
     nodes.forEach((node) => {
-      const marker = markersRef.current[node.id];
+      const existing = markersRef.current[node.id];
 
       if (node.hasPosition) {
-        const latLng = [node.latitude, node.longitude];
-
-        if (!marker) {
-          const newMarker = L.marker(latLng).addTo(mapRef.current).bindPopup(node.name);
-          markersRef.current[node.id] = newMarker;
+        const latlng = [node.latitude, node.longitude];
+        if (!existing) {
+          const m = L.marker(latlng).addTo(mapRef.current).bindPopup(node.name);
+          markersRef.current[node.id] = m;
         } else {
-          marker.setLatLng(latLng);
+          existing.setLatLng(latlng);
         }
-      } else {
-        // se non ha posizione, rimuovi il marker se esiste
-        if (marker) {
-          mapRef.current.removeLayer(marker);
-          delete markersRef.current[node.id];
-        }
+      } else if (existing) {
+        mapRef.current.removeLayer(existing);
+        delete markersRef.current[node.id];
       }
     });
   }, [nodes, isReady]);
 
   useEffect(() => {
     if (!isReady || !selectedNodeId) return;
-
     const marker = markersRef.current[selectedNodeId];
     if (marker) {
       marker.openPopup();

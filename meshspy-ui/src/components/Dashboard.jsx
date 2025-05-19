@@ -39,11 +39,18 @@ export default function Dashboard() {
   const gps = nodes.filter(n => n.hasPosition).length;
   const offline = nodes.filter(n => n.raw?.online === false).length;
 
+  const now = new Date();
+  const recent = nodes.filter(n => {
+    const seen = n.raw?.data?.last_seen;
+    return seen && (now - new Date(seen)) < 5 * 60 * 1000; // ultimi 5 minuti
+  }).length;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
       <StatCard label="Nodi totali" value={total} color="blue" />
       <StatCard label="Con posizione" value={gps} color="green" />
       <StatCard label="Offline" value={offline} color="red" />
+      <StatCard label="Nodi recenti (≤5min)" value={recent} color="blue" />
     </div>
   );
 }

@@ -20,9 +20,9 @@ export function MapProvider({ children }) {
       const latRaw = payload.latitude_i ?? info.data?.latitude;
       const lonRaw = payload.longitude_i ?? info.data?.longitude;
 
-      const lat = latRaw != null ? latRaw / 1e7 : null;
-      const lon = lonRaw != null ? lonRaw / 1e7 : null;
-
+      const lat = latRaw > 1000 ? latRaw / 1e7 : latRaw;
+      const lon = lonRaw > 1000 ? lonRaw / 1e7 : lonRaw;
+      
       return {
         id,
         name:

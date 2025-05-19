@@ -44,51 +44,85 @@ class MQTTService:
         self.state = AppState()
         self.db_path = get_db_path()
         self.my_node_id = "Server-MeshSpy"
+        self._reconnect_task: Optional[asyncio.Task] = None
+        self._stopped = asyncio.Event()
 
     async def start(self):
+        """Avvia la connessione MQTT e tiene la reconnessione attiva"""
         logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
         init_db()
         self.nodes.update(load_nodes_as_dict())
-
-        self.stack = AsyncExitStack()
-        await self.stack.__aenter__()
-
-        self.client = await self.stack.enter_async_context(
-            Client(
-                hostname=MQTT_HOST,
-                port=MQTT_PORT,
-                username=MQTT_USERNAME if MQTT_USERNAME else None,
-                password=MQTT_PASSWORD if MQTT_PASSWORD else None,
-                keepalive=60,
-            )
-        )
-
-        await self.client.subscribe(MQTT_TOPIC)
-        logger.info("Sottoscritto a %s", MQTT_TOPIC)
-        logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_HOST, MQTT_PORT)
-        logger.info("In ascolto su topic MQTT")
-
-        asyncio.create_task(self._listener())
+        self._stopped.clear()
+        if not self._reconnect_task or self._reconnect_task.done():
+            self._reconnect_task = asyncio.create_task(self._connection_manager())
 
     async def stop(self):
         logger.info("MQTT listener fermato")
+        self._stopped.set()
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
         if self.stack:
             await self.stack.aclose()
 
+    async def _connection_manager(self):
+        """Gestione reconnessione automatica"""
+        retry_delay = 3
+        max_delay = 60
+        while not self._stopped.is_set():
+            try:
+                self.stack = AsyncExitStack()
+                await self.stack.__aenter__()
+
+                self.client = await self.stack.enter_async_context(
+                    Client(
+                        hostname=MQTT_HOST,
+                        port=MQTT_PORT,
+                        username=MQTT_USERNAME if MQTT_USERNAME else None,
+                        password=MQTT_PASSWORD if MQTT_PASSWORD else None,
+                        keepalive=60,
+                    )
+                )
+
+                await self.client.subscribe(MQTT_TOPIC)
+                logger.info("Sottoscritto a %s", MQTT_TOPIC)
+                logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_HOST, MQTT_PORT)
+                logger.info("In ascolto su topic MQTT")
+
+                # Listener termina solo su errore, quindi si esce dal ciclo
+                await self._listener()
+                # Se listener termina per errore, si tenta la reconnessione
+            except asyncio.CancelledError:
+                logger.info("MQTT reconnessione annullata (shutdown)")
+                break
+            except Exception as e:
+                logger.error("❌ Errore nella connessione MQTT: %s", e)
+                try:
+                    if self.stack:
+                        await self.stack.aclose()
+                except Exception:
+                    pass
+                logger.info(f"Ritento la connessione MQTT tra {retry_delay} secondi...")
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, max_delay)
+            else:
+                retry_delay = 3  # Reset delay se la connessione è stata stabile
+
     async def _listener(self):
+        """Listener dei messaggi, si autochiude su disconnect e triggera reconnessione"""
         assert self.client is not None
         try:
             messages = self.client.messages
             async for msg in messages:
                 await self._handle_message(msg.topic, msg.payload)
         except Exception as e:
-            logger.exception("❌ Errore durante connessione MQTT")
-
-            # Rilancia per segnalare fallimento
+            logger.exception("❌ Errore durante connessione MQTT (listener)")
             raise
-            logger.error("MQTT listener error: %s", e)
         finally:
-            await self.stop()
+            try:
+                if self.stack:
+                    await self.stack.aclose()
+            except Exception:
+                pass
 
     async def _handle_message(self, topic, payload):
         try:
@@ -132,14 +166,14 @@ class MQTTService:
 
         insert_or_update_node_from_message(message)
 
+    async def test_publish(self, topic="test/topic", payload="MQTT test da MeshSpy"):
+        if self.client:
+            await self.client.publish(topic, payload)
+            logger.info(f"📤 Messaggio MQTT inviato su '{topic}': '{payload}'")
+        else:
+            logger.error("❌ MQTT non connesso, impossibile inviare il messaggio.")
+
 def get_mqtt_service() -> MQTTService:
     return AppState().mqtt_service
-
-async def test_publish(self, topic="test/topic", payload="MQTT test da MeshSpy"):
-    if self.client:
-        await self.client.publish(topic, payload)
-        logger.info(f"📤 Messaggio MQTT inviato su '{topic}': '{payload}'")
-    else:
-        logger.error("❌ MQTT non connesso, impossibile inviare il messaggio.")
 
 mqtt_service = get_mqtt_service()

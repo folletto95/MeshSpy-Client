@@ -1,13 +1,17 @@
 import { useMap } from "../lib/MapContext";
 import { Radio, MapPin, HelpCircle } from "lucide-react";
 import { addLogLine } from "./LogViewer";
-import { requestNodePosition } from "../lib/api";
+import { requestNodePosition, sendCustomCommand } from "../lib/api";
 import NodeActions from "./NodeActions";
+import { useState } from "react";
 
 export default function Sidebar() {
-  const { nodes, mapRef, markersRef } = useMap();
+  const { nodes, mapRef, markersRef, selectedNodeId, setSelectedNodeId } = useMap();
+  const [customCommand, setCustomCommand] = useState("");
 
   const handleClick = async (node) => {
+    setSelectedNodeId(node.id);
+
     if (node.hasPosition) {
       const marker = markersRef.current[node.id];
       if (marker && mapRef.current) {
@@ -28,22 +32,36 @@ export default function Sidebar() {
     }
   };
 
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+
+  const handleSendCommand = async () => {
+    if (!selectedNodeId || !customCommand) return;
+    try {
+      await sendCustomCommand(selectedNodeId, customCommand);
+      addLogLine(`📤 Comando "${customCommand}" inviato a ${selectedNode.name}`);
+      setCustomCommand("");
+    } catch (err) {
+      addLogLine(`❌ Errore comando: ${err.message}`);
+    }
+  };
+
   return (
     <aside className="w-64 h-full bg-gradient-to-b from-meshtastic to-gray-900 dark:from-gray-800 dark:to-gray-900 text-white shadow-md flex flex-col">
       <div className="flex items-center gap-2 px-4 py-5 text-xl font-semibold drop-shadow">
         <Radio className="w-6 h-6" />
         MeshSpy
       </div>
-      <nav className="mt-2 flex-1 overflow-auto space-y-1">
+
+      <nav className="flex-1 overflow-auto space-y-1">
         {nodes.length === 0 ? (
-          <div className="px-4 py-2 text-gray-400">
-            Nessun nodo disponibile
-          </div>
+          <div className="px-4 py-2 text-gray-400">Nessun nodo disponibile</div>
         ) : (
           nodes.map((n) => (
             <div
               key={n.id}
-              className="flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded cursor-pointer"
+              className={`flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded cursor-pointer ${
+                selectedNodeId === n.id ? "bg-gray-700 font-semibold" : ""
+              }`}
               onClick={() => handleClick(n)}
             >
               <div className="flex-1 truncate">
@@ -61,6 +79,24 @@ export default function Sidebar() {
           ))
         )}
       </nav>
+
+      <div className="p-4 border-t border-gray-700 space-y-2">
+        <label className="block text-sm text-gray-300">Comando personalizzato</label>
+        <input
+          type="text"
+          value={customCommand}
+          onChange={(e) => setCustomCommand(e.target.value)}
+          placeholder='Esempio: {"cmd":"ping"}'
+          className="w-full px-2 py-1 rounded bg-gray-800 text-white border border-gray-600 text-sm"
+        />
+        <button
+          onClick={handleSendCommand}
+          className="w-full px-2 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+          disabled={!selectedNodeId || !customCommand}
+        >
+          Invia a {selectedNode?.name || "nodo"}
+        </button>
+      </div>
     </aside>
   );
 }

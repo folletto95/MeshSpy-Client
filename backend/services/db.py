@@ -41,6 +41,7 @@ def init_db():
             node_id INTEGER UNIQUE NOT NULL,
             name TEXT,
             last_seen TEXT,
+            first_seen TEXT,
             latitude REAL,
             longitude REAL,
             altitude REAL

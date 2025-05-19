@@ -16,8 +16,9 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
 from backend.services.mqtt import mqtt_service, get_mqtt_service
-from backend.services.db import get_display_name
+from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
+from backend.metrics import nodes_total, nodes_with_gps
 
 api_router = APIRouter()
 
@@ -60,8 +61,11 @@ app.add_middleware(
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> PlainTextResponse:
-    data = generate_latest()
-    return PlainTextResponse(data, media_type=CONTENT_TYPE_LATEST)
+    nodes = load_nodes_as_dict()
+    nodes_total.set(len(nodes))
+    gps_nodes = sum(1 for node in nodes.values() if node.data.get("latitude") and node.data.get("longitude"))
+    nodes_with_gps.set(gps_nodes)
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Static GUI root

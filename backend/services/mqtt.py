@@ -17,6 +17,7 @@ from backend.services.db import (
 )
 from backend.services.message_handler import insert_or_update_node_from_message
 from backend.state import AppState
+from backend.metrics import messages_received
 
 # Carica le variabili da .env
 load_dotenv()
@@ -90,6 +91,7 @@ class MQTTService:
             decoded = payload.decode("utf-8")
             logger.info("📩 Payload ricevuto (UTF-8): %s", decoded)
             message = json.loads(decoded)
+            messages_received.inc()
         except UnicodeDecodeError as e:
             logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
             logger.warning("📦 Payload raw: %s", payload)

@@ -19,7 +19,7 @@ export default function App() {
           <Metrics />
           <MapView />
           <LogViewer />
-           <StatusBanner />
+          <StatusBanner />
         </main>
       </div>
     </div>

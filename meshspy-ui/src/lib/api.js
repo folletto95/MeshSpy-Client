@@ -78,17 +78,3 @@ export async function sendCustomCommand(node_id, command) {
   if (!res.ok) throw new Error("Errore invio comando");
   return res.json();
 }
-
-
-export async function sendCustomCommand(node_id, command) {
-  const res = await fetch(API + "/send-command", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ node_id, command }),
-  });
-
-  if (!res.ok)
-    throw new Error(`Errore ${res.status} durante invio comando`);
-
-  return res.json();
-}

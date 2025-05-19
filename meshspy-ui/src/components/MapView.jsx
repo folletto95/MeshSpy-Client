@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useMap } from "../lib/MapContext";
+import { createNodeMarker } from "../lib/markerIcons";
+
 
 export default function MapView() {
   const { mapRef, markersRef, nodes, isReady, setIsReady, selectedNodeId } = useMap();
@@ -26,7 +28,12 @@ export default function MapView() {
         const latLng = [node.latitude, node.longitude];
 
         if (!marker) {
-          const newMarker = L.marker(latLng).addTo(mapRef.current).bindPopup(node.name);
+        const newMarker = L.marker(latLng, {
+          icon: createNodeMarker({
+            color: node.id === selectedNodeId ? "#3399FF" : "#00CC66",
+            emoji: "📡"
+          })
+        })
           markersRef.current[node.id] = newMarker;
         } else {
           marker.setLatLng(latLng);

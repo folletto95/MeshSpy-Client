@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import Metrics from "./components/Metrics";
 import MapView from "./components/MapView";
 import LogViewer from "./components/LogViewer";
+import StatusBanner from "./components/StatusBanner";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Metrics />
           <MapView />
           <LogViewer />
+           <StatusBanner />
         </main>
       </div>
     </div>

@@ -4,7 +4,6 @@ import "leaflet/dist/leaflet.css";
 import { useMap } from "../lib/MapContext";
 import { createNodeMarker } from "../lib/markerIcons";
 
-
 export default function MapView() {
   const { mapRef, markersRef, nodes, isReady, setIsReady, selectedNodeId } = useMap();
 
@@ -28,18 +27,18 @@ export default function MapView() {
         const latLng = [node.latitude, node.longitude];
 
         if (!marker) {
-        const newMarker = L.marker(latLng, {
-          icon: createNodeMarker({
-            color: node.id === selectedNodeId ? "#3399FF" : "#00CC66",
-            emoji: "📡"
-          })
-        })
+          const newMarker = L.marker(latLng, {
+            icon: createNodeMarker({
+              color: node.id === selectedNodeId ? "#3399FF" : "#00CC66",
+              emoji: "📡"
+            })
+          }).addTo(mapRef.current); // ✅ AGGIUNTA ESSENZIALE
+
           markersRef.current[node.id] = newMarker;
         } else {
           marker.setLatLng(latLng);
         }
       } else {
-        // se non ha posizione, rimuovi il marker se esiste
         if (marker) {
           mapRef.current.removeLayer(marker);
           delete markersRef.current[node.id];

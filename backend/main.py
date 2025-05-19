@@ -1,4 +1,3 @@
-# backend/main.py
 from __future__ import annotations
 
 import asyncio
@@ -16,8 +15,10 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
 from backend.services.mqtt import mqtt_service, get_mqtt_service
-from backend.services.db import get_display_name
+from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
+from backend.metrics import nodes_total, nodes_with_gps
+from backend.state import AppState
 
 api_router = APIRouter()
 
@@ -38,6 +39,8 @@ logger = logging.getLogger("meshspy.main")
 # ────────────────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    AppState().nodes.update(load_nodes_as_dict())  # ✅ ripristina i nodi dal DB
+    logger.info("📦 Nodi caricati dal DB all'avvio")
     asyncio.create_task(mqtt_service.start())
     logger.info("MQTT listener avviato in background")
     yield
@@ -45,7 +48,6 @@ async def lifespan(app: FastAPI):
     logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
-
 app.include_router(ws_logs.router)
 
 app.add_middleware(
@@ -60,8 +62,11 @@ app.add_middleware(
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> PlainTextResponse:
-    data = generate_latest()
-    return PlainTextResponse(data, media_type=CONTENT_TYPE_LATEST)
+    nodes = load_nodes_as_dict()
+    nodes_total.set(len(nodes))
+    gps_nodes = sum(1 for node in nodes.values() if node.data.get("latitude") and node.data.get("longitude"))
+    nodes_with_gps.set(gps_nodes)
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Static GUI root
@@ -95,7 +100,6 @@ async def health() -> dict[str, str]:
 # ────────────────────────────────────────────────────────────────────────────
 @app.get("/nodes")
 def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
-    logger.info("📡 Nodi attuali in memoria: %s", list(svc.nodes.keys()))
     return {
         str(node_id): {
             "name": get_display_name(node_id),
@@ -103,6 +107,7 @@ def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
         }
         for node_id, payload in svc.nodes.items()
     }
+
 # ────────────────────────────────────────────────────────────────────────────
 # WebSocket streaming
 # ────────────────────────────────────────────────────────────────────────────

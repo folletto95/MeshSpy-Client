@@ -22,7 +22,7 @@ export default function MapView() {
     nodes.forEach((node) => {
       const marker = markersRef.current[node.id];
 
-      if (node.hasPosition) {
+      if (node.hasPosition && node.latitude != null && node.longitude != null) {
         const latLng = [node.latitude, node.longitude];
 
         if (!marker) {

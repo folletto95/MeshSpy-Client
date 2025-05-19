@@ -3,6 +3,8 @@ import Sidebar from "./components/Sidebar";
 import Metrics from "./components/Metrics";
 import MapView from "./components/MapView";
 import LogViewer from "./components/LogViewer";
+import StatusBanner from "./components/StatusBanner";
+import Dashboard from "./components/Dashboard";
 
 export default function App() {
   return (
@@ -15,10 +17,11 @@ export default function App() {
 
         {/* Contenuto principale con scroll se necessario */}
         <main className="flex-1 bg-gray-50 dark:bg-gray-900 p-6 overflow-y-auto flex flex-col gap-6">
-          <Metrics />
+          <StatusBanner />
+          <Dashboard />
           <MapView />
           <LogViewer />
-        </main>
+                  </main>
       </div>
     </div>
   );

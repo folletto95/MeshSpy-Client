@@ -25,6 +25,7 @@ router = APIRouter()
 async def websocket_logs(websocket: WebSocket):
     await websocket.accept()
     logger.info("📡 Connessione WebSocket /ws/logs aperta")
+    await websocket.send_text("✅ Connessione WebSocket stabilita")  # Saluto iniziale
 
     try:
         with open(LOG_FILE, "r") as log_file:
@@ -39,8 +40,6 @@ async def websocket_logs(websocket: WebSocket):
                 await websocket.send_text(line.strip())
     except WebSocketDisconnect:
         logger.info("❌ WebSocket /ws/logs chiusa dal client")
-    except FileNotFoundError:
-        await websocket.send_text("⚠️ File di log non trovato")
     except Exception as e:
         logger.exception("Errore WebSocket logs: %s", e)
         await websocket.send_text(f"Errore: {str(e)}")

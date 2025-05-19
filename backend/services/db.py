@@ -41,6 +41,7 @@ def init_db():
             node_id INTEGER UNIQUE NOT NULL,
             name TEXT,
             last_seen TEXT,
+            first_seen TEXT,
             latitude REAL,
             longitude REAL,
             altitude REAL
@@ -143,6 +144,12 @@ def load_nodes_as_dict() -> dict:
         str(row["node_id"]): NodeData(name=row["name"], data=dict(row))
         for row in rows if row["node_id"]
     }
+
+def is_node_online(last_seen: str, minutes=10) -> bool:
+    try:
+        return datetime.utcnow() - datetime.fromisoformat(last_seen) < timedelta(minutes=minutes)
+    except Exception:
+        return False
 
 class Node(BaseModel):
     node_id: int

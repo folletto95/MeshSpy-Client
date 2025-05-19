@@ -15,16 +15,14 @@ export function MapProvider({ children }) {
   useEffect(() => {
     if (!rawData) return;
 
-    console.log("🔍 rawData ricevuto:", rawData); // DEBUG
-
     const result = Object.entries(rawData).map(([id, info]) => {
       const payload = info.data?.payload ?? {};
       const latRaw = payload.latitude_i ?? info.data?.latitude;
       const lonRaw = payload.longitude_i ?? info.data?.longitude;
 
-      const lat = latRaw != null ? latRaw / 1e7 : null;
-      const lon = lonRaw != null ? lonRaw / 1e7 : null;
-
+      const lat = latRaw > 1000 ? latRaw / 1e7 : latRaw;
+      const lon = lonRaw > 1000 ? lonRaw / 1e7 : lonRaw;
+      
       return {
         id,
         name:

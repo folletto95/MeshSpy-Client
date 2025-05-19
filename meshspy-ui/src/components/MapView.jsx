@@ -1,67 +1,57 @@
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useMap } from "../lib/MapContext";
+import React, { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
+import { useMap } from "../lib/MapContext";
 
 export default function MapView() {
-  const { nodes, mapRef, markersRef, setIsReady } = useMap();
+  const { mapRef, markersRef, nodes, isReady, setIsReady, selectedNodeId } = useMap();
 
-  const nodesWithPos = nodes.filter((n) => n.hasPosition);
+  useEffect(() => {
+    if (!mapRef.current) {
+      mapRef.current = L.map("map").setView([43.7167, 10.4000], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(mapRef.current);
+      setIsReady(true);
+    }
+  }, []);
 
-  const fallbackCenter = [43.7162, 10.4017];
-  const center =
-    nodesWithPos.length > 0
-      ? [
-          nodesWithPos.reduce((sum, n) => sum + n.latitude, 0) /
-            nodesWithPos.length,
-          nodesWithPos.reduce((sum, n) => sum + n.longitude, 0) /
-            nodesWithPos.length,
-        ]
-      : fallbackCenter;
+  useEffect(() => {
+    if (!isReady) return;
 
-  return (
-    <div className="h-80 rounded-2xl overflow-hidden shadow ring-1 ring-black/5">
-      <MapContainer
-        center={center}
-        zoom={6}
-        className="h-full w-full"
-        whenCreated={(map) => {
-          mapRef.current = map;
-          setIsReady(true);
-        }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {nodesWithPos.map((n) => (
-          <Marker
-            key={n.id}
-            position={[n.latitude, n.longitude]}
-            ref={(el) => {
-              if (el) markersRef.current[n.id] = el;
-            }}
-          >
-            <Popup>
-              <div className="font-semibold">{n.name}</div>
-              <div className="text-sm text-gray-500">
-                {n.latitude.toFixed(5)}, {n.longitude.toFixed(5)}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-    </div>
-  );
+    nodes.forEach((node) => {
+      const marker = markersRef.current[node.id];
+
+      if (node.hasPosition) {
+        const latLng = [node.latitude, node.longitude];
+
+        if (!marker) {
+          const newMarker = L.marker(latLng).addTo(mapRef.current).bindPopup(node.name);
+          markersRef.current[node.id] = newMarker;
+        } else {
+          marker.setLatLng(latLng);
+        }
+      } else {
+        // se non ha posizione, rimuovi il marker se esiste
+        if (marker) {
+          mapRef.current.removeLayer(marker);
+          delete markersRef.current[node.id];
+        }
+      }
+    });
+  }, [nodes, isReady]);
+
+  useEffect(() => {
+    if (!isReady || !selectedNodeId) return;
+
+    const marker = markersRef.current[selectedNodeId];
+    if (marker) {
+      marker.openPopup();
+      mapRef.current.flyTo(marker.getLatLng(), 17);
+    } else {
+      console.log(`[client] ❌ Marker non trovato per ${selectedNodeId}`);
+    }
+  }, [selectedNodeId, isReady]);
+
+  return <div id="map" className="h-full w-full" />;
 }

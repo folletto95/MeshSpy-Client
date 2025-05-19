@@ -100,3 +100,46 @@ POST /send-command
 con supporto per node_id e command, da pubblicare su MQTT. Posso aiutarti a implementarla se vuoi.
 
 Fammi sapere se stampiamo i file o passiamo al backend.
+
+
+✅ Backend — File suggerito: api/send_command.py
+python
+Copia
+Modifica
+from fastapi import APIRouter, Request
+from pydantic import BaseModel
+import logging
+
+from backend.services.mqtt import mqtt_service
+
+router = APIRouter()
+log = logging.getLogger("meshspy.api")
+
+class CommandRequest(BaseModel):
+    node_id: int
+    command: str  # raw JSON string
+
+@router.post("/send-command")
+async def send_command(req: CommandRequest):
+    topic = f"msh/EU_868/2/c/MediumFast/!{req.node_id:x}"
+    try:
+        mqtt_service.publish(topic, req.command.encode("utf-8"))
+        log.info(f"Comando inviato a {req.node_id}: {req.command}")
+        return {"status": "ok"}
+    except Exception as e:
+        log.error(f"Errore invio comando: {e}")
+        return {"error": str(e)}
+E non dimenticare di importarlo in main.py:
+
+python
+Copia
+Modifica
+from backend.api.send_command import router as command_router
+app.include_router(command_router)
+✅ Prossimi step
+Azione	Stato
+UI: invio comandi	✅ Pronta
+api.js client	✅ Completato
+Backend API /send-command	✳️ Da integrare
+MQTT publish	✳️ Da collegare a topic reale
+Feedback Live Log	✅ Incluso

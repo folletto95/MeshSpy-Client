@@ -1,136 +1,150 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
-import os
-from contextlib import AsyncExitStack
-from typing import Optional
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
 
-from aiomqtt import Client, MqttError
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, WebSocket, APIRouter, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse, FileResponse
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from pydantic import BaseModel
 
+from backend.services.mqtt import mqtt_service, get_mqtt_service
+from backend.services.db import get_display_name, load_nodes_as_dict
+from backend.routes import ws_logs
+from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
-from backend.services.db import (
-    insert_node,
-    update_nodeinfo,
-    update_position,
-    get_db_path,
-    load_nodes_from_db,
+
+api_router = APIRouter()
+
+# ────────────────────────────────────────────────────────────────────────────
+# .env & logging
+# ────────────────────────────────────────────────────────────────────────────
+ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / ".env")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("meshspy.main")
+
+# ────────────────────────────────────────────────────────────────────────────
+# FastAPI app with lifespan
+# ────────────────────────────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    AppState().nodes.update(load_nodes_as_dict())  # ✅ ripristina i nodi dal DB
+    logger.info("📦 Nodi caricati dal DB all'avvio")
+    asyncio.create_task(mqtt_service.start())
+    logger.info("MQTT listener avviato in background")
+    yield
+    await mqtt_service.stop()
+    logger.info("MQTT listener fermato")
+
+app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
+app.include_router(ws_logs.router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-logger = logging.getLogger("meshspy.mqtt")
+# ────────────────────────────────────────────────────────────────────────────
+# Prometheus metrics
+# ────────────────────────────────────────────────────────────────────────────
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> PlainTextResponse:
+    nodes = load_nodes_as_dict()
+    nodes_total.set(len(nodes))
+    gps_nodes = sum(1 for node in nodes.values() if node.data.get("latitude") and node.data.get("longitude"))
+    nodes_with_gps.set(gps_nodes)
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.10.202")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_USERNAME = os.getenv("MQTT_USERNAME")
-MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
-MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
+# ────────────────────────────────────────────────────────────────────────────
+# Static GUI root
+# ────────────────────────────────────────────────────────────────────────────
+@app.get("/")
+async def root() -> FileResponse:
+    index = ROOT_DIR / "static" / "index.html"
+    return FileResponse(index) if index.exists() else PlainTextResponse("MeshSpy API")
 
+# ────────────────────────────────────────────────────────────────────────────
+# Pydantic models
+# ────────────────────────────────────────────────────────────────────────────
+class WiFiConfig(BaseModel):
+    ssid: str
+    password: str
+    broker_host: str | None = None
+    broker_port: int | None = None
 
-class MQTTService:
-    def __init__(self):
-        self.nodes: dict[int, dict] = {}
-        self.client: Optional[Client] = None
-        self._stack = AsyncExitStack()
+class RequestLocation(BaseModel):
+    node_id: str
 
-    async def start(self):
-        client_kwargs = {
-            "hostname": MQTT_BROKER,
-            "port": MQTT_PORT,
+# ────────────────────────────────────────────────────────────────────────────
+# Health check
+# ────────────────────────────────────────────────────────────────────────────
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+# ────────────────────────────────────────────────────────────────────────────
+# List nodes (REST)
+# ────────────────────────────────────────────────────────────────────────────
+@app.get("/nodes")
+def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
+    return {
+        str(node_id): {
+            "name": get_display_name(node_id),
+            "data": payload.data,
         }
-        if MQTT_USERNAME and MQTT_PASSWORD:
-            client_kwargs["username"] = MQTT_USERNAME
-            client_kwargs["password"] = MQTT_PASSWORD
+        for node_id, payload in svc.nodes.items()
+    }
 
-        logger.info(f"🗄️   DB path usato da MQTT: {get_db_path()}")
+# ────────────────────────────────────────────────────────────────────────────
+# WebSocket streaming
+# ────────────────────────────────────────────────────────────────────────────
+@app.websocket("/ws/nodes")
+async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
+    await ws.accept()
+    last: dict[str, Any] | None = None
+    try:
+        while True:
+            await asyncio.sleep(0.5)
+            current = {
+                nid: {
+                    "name": get_display_name(nid),
+                    "data": data.data,
+                }
+                for nid, data in svc.nodes.items()
+            }
+            if current != last:
+                await ws.send_json(current)
+                last = current
+    except Exception as exc:
+        logger.warning("WebSocket chiuso: %s", exc)
+    finally:
+        await ws.close()
 
-        try:
-            self.client = await self._stack.enter_async_context(Client(**client_kwargs))
-            await self.client.subscribe(MQTT_TOPIC)
-            logger.info("Sottoscritto a %s", MQTT_TOPIC)
-            logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_BROKER, MQTT_PORT)
-            logger.info("In ascolto su topic MQTT")
+# ────────────────────────────────────────────────────────────────────────────
+# Richiesta posizione a nodo specifico (POST)
+# ────────────────────────────────────────────────────────────────────────────
+@app.post("/request-position")
+async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):
+    topic = f"mesh/request/{data.node_id}/location"
+    payload = json.dumps({"cmd": "request_position", "from": "Server-MeshSpy"})
 
-            # Carica i nodi salvati
-            self.nodes = load_nodes_from_db()
+    if not svc.client or not getattr(svc.client, "is_connected", True):
+        logger.warning("⛔ MQTT non pronto, rifiuto comando.")
+        raise HTTPException(status_code=503, detail="MQTT client not ready")
 
-            asyncio.create_task(self._listener())
-        except MqttError as e:
-            logger.error("❌ Errore nella connessione MQTT: %s", e)
-            self.stop()
-
-    async def stop(self):
-        await self._stack.aclose()
-        logger.info("MQTT listener fermato")
-
-    async def _listener(self):
-        assert self.client is not None
-        try:
-            async with self.client.messages() as messages:
-                async for msg in messages:
-                    await self._handle_message(msg.topic, msg.payload)
-        except MqttError as e:
-            logger.error("MQTT listener errore: %s", e)
-
-    async def _handle_message(self, topic: str, payload: bytes):
-        try:
-            decoded = payload.decode("utf-8")
-        except UnicodeDecodeError as e:
-            logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
-            return
-
-        try:
-            data = json.loads(decoded)
-        except json.JSONDecodeError:
-            logger.warning("Errore parsing JSON del messaggio su %s: %s", topic, decoded)
-            return
-
-        node_id = data.get("from")
-        if not node_id:
-            logger.warning("Messaggio senza campo 'from': %s", data)
-            return
-
-        if node_id == "Server-MeshSpy":
-            return  # ignora i messaggi inviati dal server stesso
-
-        # Se il nodo non è in memoria, registralo
-        if node_id not in self.nodes:
-            name = data.get("name", f"node-{node_id}")
-            insert_node(node_id, name)
-            self.nodes[node_id] = {"name": name, "data": {}}
-            logger.info("Nuovo nodo rilevato: %s", node_id)
-
-        node = self.nodes[node_id]
-        node["data"].update(data)
-
-        if "name" in data:
-            update_nodeinfo(node_id, data["name"])
-            node["name"] = data["name"]
-            logger.info("Aggiornato nodeinfo per %s → %s", node_id, data["name"])
-
-        if "lat" in data and "lon" in data:
-            lat, lon = data["lat"], data["lon"]
-            prev = node["data"].get("lat"), node["data"].get("lon")
-            if (lat, lon) != prev:
-                update_position(node_id, lat, lon)
-                logger.info("Aggiornata posizione per %s: (%.5f, %.5f)", node_id, lat, lon)
-
-        msg_type = data.get("type", "text")
-        if msg_type != "text":
-            logger.info("Tipo messaggio sconosciuto (%s) da %s", msg_type, node_id)
-
-    def get_nodes(self):
-        return self.nodes
-
-    def send_position_request(self, node_id: int):
-        if self.client is None:
-            raise RuntimeError("MQTT client non inizializzato")
-        topic = f"mesh/request/{node_id}/location"
-        payload = json.dumps({"cmd": "request_position", "from": "Server-MeshSpy"})
-        asyncio.create_task(self.client.publish(topic, payload))
-        logger.info("Comando 'request_position' inviato a %s su topic %s", node_id, topic)
-
-
-mqtt_service = MQTTService()
-
-
-def get_mqtt_service():
-    return mqtt_service
+    await svc.client.publish(topic, payload.encode())
+    logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
+    return {"status": "ok", "requested": data.node_id}

@@ -115,12 +115,11 @@ class MQTTService:
 
         logger.info("📨 Messaggio valido da %s: %s", node_id, message)
 
-        # Unione intelligente dei dati
+        # Recupera dati precedenti se esistono
         old_data = self.nodes.get(node_id)
-        merged_data = {}
-        if old_data:
-            merged_data.update(old_data.data)
+        merged_data = old_data.data.copy() if old_data else {}
 
+        # Aggiorna solo i campi presenti nel nuovo messaggio
         for key, value in message.items():
             if value is not None:
                 merged_data[key] = value

@@ -19,7 +19,6 @@ export default function App() {
         <main className="flex-1 bg-gray-50 dark:bg-gray-900 p-6 overflow-y-auto flex flex-col gap-6">
           <StatusBanner />
           <Dashboard />
-          <Metrics />
           <MapView />
           <LogViewer />
                   </main>

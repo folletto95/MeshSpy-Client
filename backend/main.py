@@ -140,11 +140,7 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
 async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):
     topic = f"mesh/request/{data.node_id}/location"
     payload = json.dumps({"cmd": "request_position"})
-
-    if not svc.client or not getattr(svc.client, "is_connected", True):
-        logger.warning("⛔ MQTT non pronto, rifiuto comando.")
-        raise HTTPException(status_code=503, detail="MQTT client not ready")
-
+    
     await svc.client.publish(topic, payload.encode())
     logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
     return {"status": "ok", "requested": data.node_id}

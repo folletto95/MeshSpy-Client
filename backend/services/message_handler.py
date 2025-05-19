@@ -30,9 +30,9 @@ def insert_or_update_node_from_message(message: dict):
         payload = message.get("payload", {})
         if lat in (None, 0) and "latitude_i" in payload:
             lat = payload["latitude_i"] / 1e7
-        if lat in (None, 0) and "longitude_i" in payload:
+        if lon in (None, 0) and "longitude_i" in payload:
             lon = payload["longitude_i"] / 1e7
-        if lat in (None, 0) and "altitude" in payload:
+        if alt in (None, 0) and "altitude" in payload:
             alt = payload["altitude"]
 
         if lat not in (None, 0) and lon not in (None, 0):

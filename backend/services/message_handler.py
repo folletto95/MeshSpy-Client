@@ -18,12 +18,15 @@ def insert_or_update_node_from_message(message: dict):
     # Aggiornamento dati noti
     lat = lon = alt = None
     name = None
+    update_position = False
 
     msg_type = message.get("type")
     if msg_type == "position":
         lat = message.get("lat")
         lon = message.get("lon")
         alt = message.get("altitude")
+        if lat not in (None, 0) and lon not in (None, 0):
+            update_position = True
     elif msg_type == "nodeinfo":
         payload = message.get("payload", {})
         name = payload.get("longname") or payload.get("shortname")
@@ -34,7 +37,7 @@ def insert_or_update_node_from_message(message: dict):
     if name:
         updates.append("name = ?")
         params.append(name)
-    if lat not in (None, 0) and lon not in (None, 0):
+    if update_position:
         updates.extend(["latitude = ?", "longitude = ?"])
         params.extend([lat, lon])
         if alt is not None:

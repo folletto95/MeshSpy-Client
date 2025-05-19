@@ -1,15 +1,22 @@
-import { requestNodePosition } from "../lib/api";
+import { Terminal } from "lucide-react";
 
 export default function NodeActions({ node }) {
-  if (!node) return null;
+  // Puoi estendere con ulteriori azioni o pulsanti
+  const handleLog = () => {
+    console.log(`[Debug] Nodo selezionato: ${node.name}`);
+  };
 
   return (
-    <div className="space-y-2 mt-2">
+    <div className="mt-1 flex gap-1 text-sm text-gray-300">
       <button
-        onClick={() => requestNodePosition(node.id)}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+        title="Logga info nodo"
+        onClick={(e) => {
+          e.stopPropagation(); // Previene il click che attiva zoom/richiesta posizione
+          handleLog();
+        }}
+        className="hover:text-white"
       >
-        📍 Richiedi posizione
+        <Terminal className="w-4 h-4" />
       </button>
     </div>
   );

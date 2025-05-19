@@ -46,7 +46,6 @@ class MQTTService:
         self.my_node_id = "Server-MeshSpy"
 
     async def start(self):
-        logger.warning("🧪 MQTT.start() invocato")
         logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
         init_db()
         self.nodes.update(load_nodes_as_dict())

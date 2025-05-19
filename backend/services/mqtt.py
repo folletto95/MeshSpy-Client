@@ -81,11 +81,7 @@ class MQTTService:
             messages = self.client.messages
             async for msg in messages:
                 await self._handle_message(msg.topic, msg.payload)
-        except Exception as e:
-        logger.exception("❌ Errore durante connessione MQTT")
-
-        # Rilancia per segnalare fallimento
-        raise
+        except MqttError as e:
             logger.error("MQTT listener error: %s", e)
         finally:
             await self.stop()

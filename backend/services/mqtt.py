@@ -46,7 +46,6 @@ class MQTTService:
         self.my_node_id = "Server-MeshSpy"
         self._reconnect_task: Optional[asyncio.Task] = None
         self._stopped = asyncio.Event()
-        self.connected = False
 
     async def start(self):
         """Avvia la connessione MQTT e tiene la reconnessione attiva"""
@@ -75,7 +74,8 @@ class MQTTService:
                 self.stack = AsyncExitStack()
                 await self.stack.__aenter__()
 
-                client_ctx = Client(
+                self.client = await self.stack.enter_async_context(
+                    Client(
                         hostname=MQTT_HOST,
                         port=MQTT_PORT,
                         username=MQTT_USERNAME if MQTT_USERNAME else None,
@@ -84,8 +84,6 @@ class MQTTService:
                     )
                 )
                 logger.warning("Client creato")
-                self.client = await self.stack.enter_async_context(client_ctx)
-                self.connected = True
                 logger.warning(self.client)
                 logger.warning(self)
 
@@ -101,7 +99,6 @@ class MQTTService:
                 logger.info("MQTT reconnessione annullata (shutdown)")
                 break
             except Exception as e:
-                self.connected = False
                 logger.error("❌ Errore nella connessione MQTT: %s", e)
                 try:
                     if self.stack:
@@ -127,7 +124,7 @@ class MQTTService:
         finally:
             try:
                 if self.stack:
-self.connected = False
+                    self.connected = False
                     await self.stack.aclose()
             except Exception:
                 pass

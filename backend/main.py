@@ -141,15 +141,15 @@ async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service))
     topic = f"mesh/request/{data.node_id}/location"
     payload = json.dumps({"cmd": "request_position", "from": "Server-MeshSpy"})
 
-    #if not svc.client or not getattr(svc.client, "is_connected", True):
-    if not svc.connected:
-        logger.warning(svc.client)
-        logger.warning(svc.connected)
-        logger.warning(svc)
-        logger.warning(getattr(svc.client, "is_connected", True))
-        logger.warning("⛔ MQTT non pronto, rifiuto comando.")
+    if not svc.connected or svc.client is None:
+        logger.warning("⛔ MQTT non pronto: client mancante o disconnesso.")
         raise HTTPException(status_code=503, detail="MQTT client not ready")
 
-    await svc.client.publish(topic, payload.encode())
+    try:
+        await svc.client.publish(topic, payload.encode())
+    except Exception as e:
+        logger.error("❌ Errore pubblicando su MQTT: %s", e)
+        raise HTTPException(status_code=500, detail="Errore pubblicando su MQTT")
+
     logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
     return {"status": "ok", "requested": data.node_id}

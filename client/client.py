@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """ DIO CANE
+
+
 Client Meshtastic con supporto MQTT e REST
 - Usa moduli esterni per database, MQTT, REST, Meshtastic
 """

@@ -74,17 +74,14 @@ def decode_meshtastic_message(payload_bytes):
         }
 
         if envelope.HasField("packet"):
-            try:
-                mesh_packet = mesh_pb2.MeshPacket()
-                mesh_packet.ParseFromString(envelope.packet)
-                decoded["packet"] = mesh_packet
-            except DecodeError as dp_err:
-                decoded["packet"] = f"Errore decodifica MeshPacket: {dp_err}"
+            data_packet = mesh_pb2.Data()
+            data_packet.ParseFromString(envelope.packet)
+            decoded["packet"] = data_packet
         else:
             decoded["packet"] = None
 
         return decoded
 
     except DecodeError as e:
-        print(f"Errore nella decodifica ServiceEnvelope: {e}")
+        print(f"Errore nella decodifica: {e}")
         return None

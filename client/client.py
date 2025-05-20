@@ -43,10 +43,11 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")
     info = interface.myInfo
     node = interface.localNode
+    user = node.user
     update_node_info(
         node_num=info.my_node_num,
-        long_name=node.getLongName(),
-        short_name=node.getShortName(),
+        long_name=user.get("longName", "N/A"),
+        short_name=user.get("shortName", "N/A"),
         hw_model=info.hardware_model,
         firmware_version=info.version
     )

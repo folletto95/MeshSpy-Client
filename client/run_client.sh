@@ -4,16 +4,21 @@ set -euo pipefail
 
 VENV_DIR=".venv"
 
-echo "[INFO] Verifico dipendenze di sistema..."
+echo "[INFO] Verifico python3-venv..."
 if ! dpkg -s python3-venv &>/dev/null; then
   echo "[INFO] Installo python3-venv (richiede sudo)..."
   sudo apt update && sudo apt install -y python3-venv
 fi
 
-# Crea il virtualenv SE NON ESISTE
 if [ ! -d "$VENV_DIR" ]; then
   echo "[INFO] Creo virtual environment..."
   python3 -m venv "$VENV_DIR"
+fi
+
+if [ ! -f "$VENV_DIR/bin/activate" ]; then
+  echo "[ERRORE] Il virtual environment non è stato creato correttamente."
+  echo "Prova a cancellare .venv e ripetere."
+  exit 1
 fi
 
 echo "[INFO] Attivo virtual environment..."

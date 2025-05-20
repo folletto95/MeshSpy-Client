@@ -143,3 +143,107 @@ api.js client	✅ Completato
 Backend API /send-command	✳️ Da integrare
 MQTT publish	✳️ Da collegare a topic reale
 Feedback Live Log	✅ Incluso
+
+
+
+
+Perfetto. Ecco un elenco chiaro e strutturato delle cose che servono per integrare le Raspberry nel sistema MeshSpy.
+
+✅ 1. Modifiche lato Backend (Server centrale - FastAPI)
+Queste modifiche permettono al frontend di inviare comandi alle Raspberry (via MQTT) e ricevere info su quali nodi sono gestiti da una Raspberry.
+
+📦 API REST:
+Metodo	Endpoint	Funzione
+POST	/berry/{node_id}/update	Chiede alla Raspberry di aggiornarsi
+POST	/berry/{node_id}/reboot	Riavvia nodo remoto
+POST	/berry/{node_id}/set-position	Invia posizione manuale alla Raspberry
+GET	/nodes	Restituisce la lista nodi (aggiungere isRaspberry)
+
+🔧 Implementazione:
+Aggiungi logica in mqtt.py per riconoscere che un nodo è gestito da Raspberry (es. via nodeinfo.payload → longname.includes("berry") oppure messaggio dedicato)
+
+Aggiungi campo isRaspberry: true/false nei dati del nodo
+
+Aggiungi mqtt.publish() per inoltrare i comandi ricevuti da questi endpoint verso il topic del nodo
+
+Esempio MQTT:
+python
+Copia
+Modifica
+mqtt.publish(f"msh/EU_868/{node_id}/commands", json.dumps({
+  "cmd": "update",
+}))
+✅ 2. Modifiche nel Client Raspberry (Python/FastAPI/Flask)
+Ogni Raspberry esegue un piccolo servizio che:
+
+Sottoscrive i topic MQTT del proprio nodo
+
+Esegue comandi custom ricevuti via MQTT
+
+Invia info di stato al backend centrale (o log)
+
+Espone (opzionale) un'interfaccia locale web REST (per debug)
+
+📥 MQTT: messaggi da supportare
+cmd: "update" → esegue aggiornamento (es. git pull + systemctl restart)
+
+cmd: "reboot" → riavvia il nodo via USB
+
+cmd: "set-position" → aggiorna posizione interna
+
+📦 Interfaccia locale (opzionale)
+Metodo	Endpoint	Funzione
+GET	/status	Info base del nodo
+GET	/logs	Log locali
+POST	/simulate-msg	Per test/debug
+
+✅ 3. Formato dei comandi MQTT
+Tutti i comandi inviati alla Raspberry via MQTT devono usare un formato JSON standard.
+
+Esempio:
+json
+Copia
+Modifica
+{
+  "cmd": "update"
+}
+json
+Copia
+Modifica
+{
+  "cmd": "set-position",
+  "lat": 43.7156,
+  "lng": 10.4017
+}
+✅ 4. Struttura JSON nodi dal backend
+Ogni nodo nel JSON che il backend restituisce al frontend (GET /nodes) deve contenere questi campi minimi:
+
+json
+Copia
+Modifica
+{
+  "id": 12345678,
+  "name": "Nicco_Pisa",
+  "hasPosition": true,
+  "isRaspberry": true
+}
+✅ 5. (Extra) Storage locale sulla Raspberry
+File node.db SQLite o .json per dati nodo/posizione
+
+Log file /var/log/meshspy-berry.log
+
+Script berry-update.sh per cmd: "update"
+
+🚀 Cosa puoi iniziare a fare ora
+Task	Dove
+✏️ Aggiungi isRaspberry	In mqtt.py
+🛠️ Crea endpoint /berry/...	In main.py backend
+🔌 Scrivi mqtt.publish(...)	Dentro gli handler FastAPI
+🧪 Scrivi il client MQTT	Sulla Raspberry
+🔍 Aggiungi log su cmd ricevuti	Raspberry logger
+
+Se vuoi ti preparo:
+
+Codice Python per il client MQTT della Raspberry
+
+I nuovi endpoint FastAPI per cmd → mqtt.publish()

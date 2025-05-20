@@ -2,3 +2,5 @@ meshtastic
 pypubsub
 requests
 flask
+paho-mqtt
+python-dotenv

@@ -46,6 +46,7 @@ class MQTTService:
         self.my_node_id = "Server-MeshSpy"
         self._reconnect_task: Optional[asyncio.Task] = None
         self._stopped = asyncio.Event()
+        self.connected = False
 
     async def start(self):
         """Avvia la connessione MQTT e tiene la reconnessione attiva"""
@@ -62,6 +63,7 @@ class MQTTService:
         if self._reconnect_task:
             self._reconnect_task.cancel()
         if self.stack:
+            self.connected = False
             await self.stack.aclose()
 
     async def _connection_manager(self):
@@ -74,6 +76,8 @@ class MQTTService:
                 await self.stack.__aenter__()
 
                 self.client = await self.stack.enter_async_context(
+                    # ⬇️ Imposta connesso
+                    
                     Client(
                         hostname=MQTT_HOST,
                         port=MQTT_PORT,
@@ -83,6 +87,7 @@ class MQTTService:
                     )
                 )
 
+                self.connected = True
                 await self.client.subscribe(MQTT_TOPIC)
                 logger.info("Sottoscritto a %s", MQTT_TOPIC)
                 logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_HOST, MQTT_PORT)
@@ -98,10 +103,12 @@ class MQTTService:
                 logger.error("❌ Errore nella connessione MQTT: %s", e)
                 try:
                     if self.stack:
-                        await self.stack.aclose()
+                        self.connected = False
+            await self.stack.aclose()
                 except Exception:
                     pass
                 logger.info(f"Ritento la connessione MQTT tra {retry_delay} secondi...")
+                self.connected = False
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, max_delay)
             else:
@@ -120,7 +127,8 @@ class MQTTService:
         finally:
             try:
                 if self.stack:
-                    await self.stack.aclose()
+                    self.connected = False
+            await self.stack.aclose()
             except Exception:
                 pass
 

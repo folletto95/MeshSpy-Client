@@ -12,6 +12,11 @@ fi
 echo "[INFO] Attivo virtual environment..."
 source "$VENV_DIR/bin/activate"
 
+echo "[INFO] Carico variabili da .env se esiste..."
+if [ -f ".env" ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
+
 echo "[INFO] Installo dipendenze da requirements.txt..."
 python -m pip install --upgrade pip
 pip install -r requirements.txt

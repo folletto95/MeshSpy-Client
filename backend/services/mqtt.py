@@ -85,7 +85,7 @@ class MQTTService:
                 )
                 logger.warning("Client creato")
                 logger.warning(self.client)
-
+                logger.warning(self)
 
                 await self.client.subscribe(MQTT_TOPIC)
                 logger.info("Sottoscritto a %s", MQTT_TOPIC)

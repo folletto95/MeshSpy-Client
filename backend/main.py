@@ -143,6 +143,7 @@ async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service))
 
     if not svc.client or not getattr(svc.client, "is_connected", True):
         logger.warning(svc.client)
+        logger.warning(svc)
         logger.warning(getattr(svc.client, "is_connected", True))
         logger.warning("⛔ MQTT non pronto, rifiuto comando.")
         raise HTTPException(status_code=503, detail="MQTT client not ready")

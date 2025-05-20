@@ -70,6 +70,7 @@ class MQTTService:
         max_delay = 60
         while not self._stopped.is_set():
             try:
+                logger.warning("Si avvia il client??")
                 self.stack = AsyncExitStack()
                 await self.stack.__aenter__()
 

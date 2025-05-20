@@ -141,8 +141,7 @@ async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service))
     topic = f"mesh/request/{data.node_id}/location"
     payload = json.dumps({"cmd": "request_position", "from": "Server-MeshSpy"})
 
-    if not svc.connected:
-
+    if not svc.client or not getattr(svc.client, "is_connected", True):
         logger.warning(svc)
         logger.warning("⛔ MQTT non pronto, rifiuto comando.")
         raise HTTPException(status_code=503, detail="MQTT client not ready")

@@ -42,8 +42,7 @@ def on_receive(packet, interface, server_url):
 def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")
     info = interface.myInfo
-    node = interface.localNode
-    user = node.user
+    user = info.user
     update_node_info(
         node_num=info.my_node_num,
         long_name=user.get("longName", "N/A"),

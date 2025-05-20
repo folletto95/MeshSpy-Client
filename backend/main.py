@@ -153,3 +153,5 @@ async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service))
 
     logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
     return {"status": "ok", "requested": data.node_id}
+    logger.info("✅ MQTT client assegnato: %s", self.client)
+    

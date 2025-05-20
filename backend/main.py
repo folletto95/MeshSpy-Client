@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, WebSocket, APIRouter
+from fastapi import Depends, FastAPI, WebSocket, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, FileResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
@@ -44,8 +44,8 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(mqtt_service.start())
     logger.info("MQTT listener avviato in background")
     yield
-    await mqtt_service.stop()
-    logger.info("MQTT listener fermato")
+    #await mqtt_service.stop()
+    #logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
 app.include_router(ws_logs.router)
@@ -134,15 +134,24 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
         await ws.close()
 
 # ────────────────────────────────────────────────────────────────────────────
-# Request location (POST)
+# Richiesta posizione a nodo specifico (POST)
 # ────────────────────────────────────────────────────────────────────────────
-@app.post("/request-location")
-async def request_location(data: RequestLocation, svc=Depends(get_mqtt_service)):
+@app.post("/request-position")
+async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):
     topic = f"mesh/request/{data.node_id}/location"
-    payload = json.dumps({"cmd": "request_position"})
-    if svc.client:
+    payload = json.dumps({"cmd": "request_position", "from": "Server-MeshSpy"})
+
+    if not svc.connected or svc.client is None:
+        logger.warning("⛔ MQTT non pronto: client mancante o disconnesso.")
+        raise HTTPException(status_code=503, detail="MQTT client not ready")
+
+    try:
         await svc.client.publish(topic, payload.encode())
-        logger.info("Comando 'request_position' inviato a %s su topic %s", data.node_id, topic)
-    else:
-        logger.error("MQTT client non inizializzato, impossibile inviare comando.")
+    except Exception as e:
+        logger.error("❌ Errore pubblicando su MQTT: %s", e)
+        raise HTTPException(status_code=500, detail="Errore pubblicando su MQTT")
+
+    logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
     return {"status": "ok", "requested": data.node_id}
+    logger.info("✅ MQTT client assegnato: %s", self.client)
+    

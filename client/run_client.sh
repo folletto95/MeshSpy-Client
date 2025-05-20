@@ -4,6 +4,19 @@ set -euo pipefail
 
 VENV_DIR=".venv"
 
+echo "[INFO] Verifico python3-venv..."
+if ! dpkg -s python3-venv &>/dev/null; then
+  echo "[INFO] Installo python3-venv (richiede sudo)..."
+  sudo apt update && sudo apt install -y python3-venv
+fi
+
+# Se esiste .venv ma è corrotto, lo elimino
+if [ -d "$VENV_DIR" ] && [ ! -f "$VENV_DIR/bin/activate" ]; then
+  echo "[WARNING] .venv esistente ma non valido. Lo elimino..."
+  rm -rf "$VENV_DIR"
+fi
+
+# Creo .venv se non esiste
 if [ ! -d "$VENV_DIR" ]; then
   echo "[INFO] Creo virtual environment..."
   python3 -m venv "$VENV_DIR"
@@ -11,6 +24,11 @@ fi
 
 echo "[INFO] Attivo virtual environment..."
 source "$VENV_DIR/bin/activate"
+
+echo "[INFO] Carico variabili da .env se esiste..."
+if [ -f ".env" ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
 
 echo "[INFO] Installo dipendenze da requirements.txt..."
 python -m pip install --upgrade pip

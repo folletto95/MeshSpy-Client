@@ -8,28 +8,10 @@
     table { border-collapse: collapse; width: 100%; background: #fff; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #eee; }
-    .controls { margin-bottom: 10px; }
-    .controls label { margin-right: 10px; }
   </style>
 </head>
 <body>
   <h1>Pacchetti Ricevuti</h1>
-
-  <div class="controls">
-    <button onclick="loadPackets()">🔄 Aggiorna</button>
-    <label for="refreshRate">⏱️ Auto-refresh (sec):</label>
-    <select id="refreshRate" onchange="updateAutoRefresh()">
-      <option value="0">Off</option>
-      <option value="10">10</option>
-      <option value="20">20</option>
-      <option value="30">30</option>
-      <option value="40">40</option>
-      <option value="50">50</option>
-      <option value="60">60</option>
-    </select>
-    <label for="filter">🔍 Filtro:</label>
-    <input type="text" id="filter" placeholder="Cerca...">
-  </div>
 
   <table id="packets">
     <thead>
@@ -41,46 +23,23 @@
   </table>
 
   <script>
-    let autoRefreshId = null;
-
-    function loadPackets() {
-      fetch("/packets")
-        .then(res => res.json())
-        .then(data => {
-          const filter = document.getElementById("filter").value.toLowerCase();
-          const tbody = document.querySelector("#packets tbody");
-          tbody.innerHTML = "";
-
-          data.forEach(pkt => {
-            const fields = [pkt.from, pkt.to, pkt.type, pkt.message, pkt.timestamp];
-            if (fields.some(f => (f ?? "").toLowerCase().includes(filter))) {
-              const tr = document.createElement("tr");
-              tr.innerHTML = `
-                <td>${pkt.from}</td>
-                <td>${pkt.to}</td>
-                <td>${pkt.type}</td>
-                <td>${pkt.message ?? ""}</td>
-                <td>${pkt.timestamp}</td>
-              `;
-              tbody.appendChild(tr);
-            }
-          });
+    fetch("/packets")
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.querySelector("#packets tbody");
+        tbody.innerHTML = "";
+        data.forEach(pkt => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${pkt.from}</td>
+            <td>${pkt.to}</td>
+            <td>${pkt.type}</td>
+            <td>${pkt.message ?? ""}</td>
+            <td>${pkt.timestamp}</td>
+          `;
+          tbody.appendChild(tr);
         });
-    }
-
-    function updateAutoRefresh() {
-      if (autoRefreshId) clearInterval(autoRefreshId);
-
-      const rate = parseInt(document.getElementById("refreshRate").value, 10);
-      if (rate > 0) {
-        autoRefreshId = setInterval(loadPackets, rate * 1000);
-      }
-    }
-
-    document.getElementById("filter").addEventListener("input", loadPackets);
-
-    // Carica all'avvio
-    loadPackets();
+      });
   </script>
 </body>
 </html>

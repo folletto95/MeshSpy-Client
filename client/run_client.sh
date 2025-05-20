@@ -10,6 +10,7 @@ if ! dpkg -s python3-venv &>/dev/null; then
   sudo apt update && sudo apt install -y python3-venv
 fi
 
+# Crea il virtualenv SE NON ESISTE
 if [ ! -d "$VENV_DIR" ]; then
   echo "[INFO] Creo virtual environment..."
   python3 -m venv "$VENV_DIR"

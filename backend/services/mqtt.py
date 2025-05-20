@@ -71,7 +71,7 @@ class MQTTService:
         max_delay = 60
         while not self._stopped.is_set():
             try:
-                logger.warning("Si avvia il client??")
+                logger.info("⚙️ Avvio tentativo connessione MQTT...")
                 self.stack = AsyncExitStack()
                 await self.stack.__aenter__()
 
@@ -82,19 +82,17 @@ class MQTTService:
                         password=MQTT_PASSWORD if MQTT_PASSWORD else None,
                         keepalive=60,
                     )
-                logger.warning("Client creato")
+                logger.info("📡 Client MQTT creato, in attesa di connessione...")
                 self.client = await self.stack.enter_async_context(client_ctx)
                 self.connected = True
-                logger.warning(self.client)
-                logger.warning(self)
+                logger.info("✅ Connessione MQTT stabilita!")
 
                 await self.client.subscribe(MQTT_TOPIC)
-                logger.info("Sottoscritto a %s", MQTT_TOPIC)
-                logger.info("✅ Connessione MQTT avviata con %s:%s", MQTT_HOST, MQTT_PORT)
-                logger.info("In ascolto su topic MQTT")
+                logger.info(f"🔔 Iscritto al topic: {MQTT_TOPIC}")
 
                 # Listener termina solo su errore, quindi si esce dal ciclo
                 await self._listener()
+                logger.info(f"🔔 Iscritto al topic: {MQTT_TOPIC}???")
                 # Se listener termina per errore, si tenta la reconnessione
             except asyncio.CancelledError:
                 logger.info("MQTT reconnessione annullata (shutdown)")

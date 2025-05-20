@@ -111,19 +111,17 @@ class MQTTService:
         """Listener dei messaggi, si autochiude su disconnect e triggera reconnessione"""
         assert self.client is not None
         try:
-        messages = self.client.messages
-        async for msg in messages:
-            await self._handle_message(msg.topic, msg.payload)
-    except Exception as e:
-        logger.exception("❌ Errore durante connessione MQTT (listener)")
-        raise
-    finally:
-        try:
-            if self.stack:
-                self.connected = False
-                await self.stack.aclose()
-        except Exception:
-            pass
+            messages = self.client.messages
+            async for msg in messages:
+                await self._handle_message(msg.topic, msg.payload)
+        except Exception as e:
+            logger.exception("❌ Errore durante connessione MQTT (listener)")
+            raise
+        finally:
+            try:
+                if self.stack:
+                    self.connected = False
+                    await self.stack.aclose()
             except Exception:
                 pass
 

@@ -44,8 +44,8 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(mqtt_service.start())
     logger.info("MQTT listener avviato in background")
     yield
-    await mqtt_service.stop()
-    logger.info("MQTT listener fermato")
+    #await mqtt_service.stop()
+    #logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
 app.include_router(ws_logs.router)

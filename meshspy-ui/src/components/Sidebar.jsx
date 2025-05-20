@@ -1,13 +1,16 @@
 import { useMap } from "../lib/MapContext";
-import { Radio, MapPin, HelpCircle } from "lucide-react";
+import { Radio, MapPin, HelpCircle, Bot } from "lucide-react";
 import { addLogLine } from "./LogViewer";
 import { requestNodePosition, sendCustomCommand } from "../lib/api";
 import NodeActions from "./NodeActions";
+import RaspberryDialog from "./RaspberryDialog";
 import { useState } from "react";
 
 export default function Sidebar() {
   const { nodes, mapRef, markersRef, selectedNodeId, setSelectedNodeId } = useMap();
   const [customCommand, setCustomCommand] = useState("");
+  const [raspDialogOpen, setRaspDialogOpen] = useState(false);
+  const [raspNode, setRaspNode] = useState(null);
 
   const handleClick = async (node) => {
     setSelectedNodeId(node.id);
@@ -32,17 +35,22 @@ export default function Sidebar() {
     }
   };
 
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
-
   const handleSendCommand = async () => {
     if (!selectedNodeId || !customCommand) return;
     try {
       await sendCustomCommand(selectedNodeId, customCommand);
-      addLogLine(`📤 Comando "${customCommand}" inviato a ${selectedNode.name}`);
+      addLogLine(`📤 Comando "${customCommand}" inviato a ${selectedNodeId}`);
       setCustomCommand("");
     } catch (err) {
       addLogLine(`❌ Errore comando: ${err.message}`);
     }
+  };
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+
+  const handleOpenRaspberry = (node) => {
+    setRaspNode(node);
+    setRaspDialogOpen(true);
   };
 
   return (
@@ -59,22 +67,32 @@ export default function Sidebar() {
           nodes.map((n) => (
             <div
               key={n.id}
-              className={`flex items-center justify-between px-4 py-2 hover:bg-gray-700 rounded cursor-pointer ${
+              className={`flex flex-col px-4 py-2 hover:bg-gray-700 rounded cursor-pointer ${
                 selectedNodeId === n.id ? "bg-gray-700 font-semibold" : ""
               }`}
               onClick={() => handleClick(n)}
             >
-              <div className="flex-1 truncate">
-                <div className="flex items-center gap-2">
-                  {n.hasPosition ? (
-                    <MapPin className="w-4 h-4 text-lime-400" />
-                  ) : (
-                    <HelpCircle className="w-4 h-4 text-gray-400" />
-                  )}
-                  {n.name}
-                </div>
-                <NodeActions node={n} />
+              <div className="flex items-center gap-2">
+                {n.hasPosition ? (
+                  <MapPin className="w-4 h-4 text-lime-400" />
+                ) : (
+                  <HelpCircle className="w-4 h-4 text-gray-400" />
+                )}
+                <span className="flex-1 truncate">{n.name}</span>
+                {n.isRaspberry && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenRaspberry(n);
+                    }}
+                    title="Gestione Raspberry"
+                    className="text-pink-400 hover:text-pink-300"
+                  >
+                    <Bot className="w-4 h-4" />
+                  </button>
+                )}
               </div>
+              <NodeActions node={n} />
             </div>
           ))
         )}
@@ -97,6 +115,10 @@ export default function Sidebar() {
           Invia a {selectedNode?.name || "nodo"}
         </button>
       </div>
+
+      {raspDialogOpen && (
+        <RaspberryDialog node={raspNode} open={raspDialogOpen} onClose={() => setRaspDialogOpen(false)} />
+      )}
     </aside>
   );
 }

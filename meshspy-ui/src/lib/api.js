@@ -78,3 +78,26 @@ export async function sendCustomCommand(node_id, command) {
   if (!res.ok) throw new Error("Errore invio comando");
   return res.json();
 }
+
+
+export async function sendUpdate(node_id) {
+  const res = await fetch(API + `/berry/${node_id}/update`, { method: "POST" });
+  if (!res.ok) throw new Error("Errore update");
+  return res.json();
+}
+
+export async function sendReboot(node_id) {
+  const res = await fetch(API + `/berry/${node_id}/reboot`, { method: "POST" });
+  if (!res.ok) throw new Error("Errore reboot");
+  return res.json();
+}
+
+export async function setManualPosition(node_id, lat, lng) {
+  const res = await fetch(API + `/berry/${node_id}/set-position`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lat, lng }),
+  });
+  if (!res.ok) throw new Error("Errore invio posizione");
+  return res.json();
+}

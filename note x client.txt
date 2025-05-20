@@ -1,0 +1,12 @@
+🛰️ Backend: cosa serve da lato client (Raspberry)
+Tu scriverai un piccolo server (es: Flask, FastAPI, Express...) sulla Raspberry con endpoint come:
+
+Endpoint REST	Funzione
+POST /set-position	GPS manuale
+POST /config	Cambia nome, canale, ecc
+POST /reboot	Riavvia nodo
+POST /update	Triggera aggiornamento
+GET /status	Info nodo/Raspberry
+GET /logs	Scarica ultimi log (opzionale)
+
+La UI interroga questi endpoint con fetch() dal frontend MeshSpy.

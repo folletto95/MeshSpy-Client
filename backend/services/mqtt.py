@@ -82,7 +82,6 @@ class MQTTService:
                         password=MQTT_PASSWORD if MQTT_PASSWORD else None,
                         keepalive=60,
                     )
-                )
                 logger.warning("Client creato")
                 self.client = await self.stack.enter_async_context(client_ctx)
                 self.connected = True

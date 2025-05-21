@@ -23,6 +23,7 @@ from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
 from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
+from backend.services import setup_proto
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "meshtastic_protos"))
 
@@ -43,20 +44,7 @@ PROTO_DIR = ROOT_DIR / "meshtastic_protos"
 COMPILED_DIR = ROOT_DIR / "meshtastic_protos" / "meshtastic"
 
 def ensure_protobufs_compiled():
-    if not COMPILED_DIR.exists() or not any(COMPILED_DIR.glob("*_pb2.py")):
-        logger.info("📥 Scarico e compilo i file protobuf di Meshtastic...")
-        if PROTO_DIR.exists():
-            shutil.rmtree(PROTO_DIR)
-        subprocess.run(["git", "clone", PROTO_REPO, str(PROTO_DIR)], check=True)
-        subprocess.run([
-            "python", "-m", "grpc_tools.protoc",
-            "-I", str(PROTO_DIR),
-            "--python_out", str(PROTO_DIR),
-            *(str(p) for p in Path(PROTO_DIR).glob("*.proto"))
-        ], check=True)
-        (PROTO_DIR / "__init__.py").touch()
-        (COMPILED_DIR / "__init__.py").touch()
-        logger.info("✅ Compilazione completata.")
+    setup_proto.main()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -31,8 +31,9 @@ if [ -f "$REQUIREMENTS_FILE" ]; then
   echo "📦 Installo dipendenze da $REQUIREMENTS_FILE..."
   "$PYTHON_BIN" -m pip install --upgrade pip
   "$PYTHON_BIN" -m pip install -r "$REQUIREMENTS_FILE"
+  echo "✅ Dipendenze installate!"
 else
-  echo "⚠️  Nessun file $REQUIREMENTS_FILE trovato. Assicurati che grpcio-tools sia installato."
+  echo "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️  Nessun file $REQUIREMENTS_FILE trovato. Assicurati che grpcio-tools sia installato."
 fi
 
 # === PREPARAZIONE ===

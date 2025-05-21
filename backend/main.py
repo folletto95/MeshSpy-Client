@@ -29,7 +29,6 @@ from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
 from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
-from backend.services import setup_proto
 from meshtastic import mqtt_pb2
 
 # Logging & .env
@@ -44,12 +43,8 @@ logger = logging.getLogger("meshspy.main")
 # FastAPI e CORS
 api_router = APIRouter()
 
-def ensure_protobufs_compiled():
-    setup_proto.main()
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_protobufs_compiled()
     AppState().nodes.update(load_nodes_as_dict())
     logger.info("📦 Nodi caricati dal DB all'avvio")
     asyncio.create_task(mqtt_service.start())

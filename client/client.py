@@ -10,11 +10,13 @@ import argparse
 import json
 import logging
 import sqlite3
+import sys
 import time
 from threading import Thread
 
 import meshtastic.serial_interface
 import requests
+from meshtastic.util import findPorts
 from pubsub import pub
 from flask import Flask, jsonify
 
@@ -79,7 +81,7 @@ def save_packet(packet):
         conn.commit()
 
 def update_node_info(*args, **kwargs):
-    pass  # Placeholder, già definito altrove se serve
+    pass  # Placeholder, definizione esterna
 
 def on_receive(packet, interface, server_url):
     logging.info(f"Ricevuto pacchetto: {packet}")
@@ -116,7 +118,6 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
         firmware_version=info.version
     )
 
-
 def print_node_info(iface):
     info = iface.myInfo
     print("=== Info Nodo ===")
@@ -132,7 +133,7 @@ def set_owner_name(iface, long_name, short_name=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Client Meshtastic avanzato")
-    parser.add_argument("--port", default=None, help="Porta seriale (es. /dev/ttyUSB0)")
+    parser.add_argument("--port", default=None, help="Porta seriale o 'auto'")
     parser.add_argument("--server-url", help="URL per inoltro pacchetti")
     parser.add_argument("--send-text", help="Messaggio da inviare")
     parser.add_argument("--show-info", action="store_true", help="Mostra info nodo")
@@ -141,17 +142,25 @@ def main():
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
     init_db()
 
     if args.web:
-        t = Thread(target=start_web_server, daemon=True)
-        t.start()
+        Thread(target=start_web_server, daemon=True).start()
 
     pub.subscribe(lambda p, i: on_receive(p, i, args.server_url), "meshtastic.receive")
     pub.subscribe(on_connection, "meshtastic.connection.established")
 
-    iface = meshtastic.serial_interface.SerialInterface(devPath=args.port)
+    # Porta auto-detect
+    devPath = args.port
+    if args.port is None or args.port == "auto":
+        ports = findPorts()
+        if not ports:
+            logging.error("❌ Nessun dispositivo Meshtastic trovato automaticamente.")
+            sys.exit(1)
+        devPath = ports[0].devPath
+        logging.info(f"[AUTO] Trovato nodo su {devPath}")
+
+    iface = meshtastic.serial_interface.SerialInterface(devPath=devPath)
 
     try:
         if args.send_text:

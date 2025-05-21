@@ -1,83 +1,89 @@
 import os
+import sys
+import tempfile
 import subprocess
+import importlib.util
+from google.protobuf.message import DecodeError
 import requests
-import time
 from pathlib import Path
 
-# Base path settings
-BASE_DIR = Path(__file__).resolve().parent.parent
-PROTO_ROOT = BASE_DIR / "meshtastic_protos"
-PROTO_DIR = PROTO_ROOT / "meshtastic"
-NANOPB_DIR = PROTO_ROOT / "nanopb"
-BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
-NANOPB_URL = "https://raw.githubusercontent.com/nanopb/nanopb/master/generator/proto/nanopb.proto"
+# Percorso base ufficiale dei file .proto
+MESHTASTIC_PROTO_BASE = "https://raw.githubusercontent.com/meshtastic/protobufs/main"
 
-# Full .proto file list from repo
-PROTO_FILES = [
-    "admin.proto", "apponly.proto", "atak.proto", "cannedmessages.proto",
-    "channel.proto", "clientonly.proto", "config.proto", "connection_status.proto",
-    "device_ui.proto", "deviceonly.proto", "interdevice.proto", "localonly.proto",
-    "mesh.proto", "module_config.proto", "mqtt.proto", "paxcount.proto",
-    "portnums.proto", "powermon.proto", "remote_hardware.proto", "rtttl.proto",
-    "storeforward.proto", "telemetry.proto", "xmodem.proto"
+MESHTASTIC_PROTO_FILES = [
+    "admin.proto", "apponly.proto", "channel.proto", "clientonly.proto", "config.proto",
+    "data.proto", "device.proto", "device_ui.proto", "environment.proto", "hardware.proto",
+    "interdevice.proto", "mesh.proto", "module_config.proto", "mqtt.proto",
+    "paxcount.proto", "portnums.proto", "remote_hardware.proto", "routing.proto",
+    "rtttl.proto", "storeforward.proto", "store.proto", "telemetry.proto", "util.proto", "xmodem.proto"
 ]
 
-def ensure_directory(path):
-    os.makedirs(path, exist_ok=True)
-    init_file = path / "__init__.py"
-    if not init_file.exists():
-        init_file.touch()
+def download_all_protos(proto_dir):
+    """Scarica tutti i file .proto dal repository Meshtastic se non esistono."""
+    for proto in MESHTASTIC_PROTO_FILES:
+        proto_path = os.path.join(proto_dir, proto)
+        if not os.path.exists(proto_path):
+            print(f"📥 Scarico {proto}...")
+            url = f"{MESHTASTIC_PROTO_BASE}/{proto}"
+            response = requests.get(url)
+            response.raise_for_status()
+            with open(proto_path, "wb") as f:
+                f.write(response.content)
+        else:
+            print(f"✅ {proto} già presente, skip.")
 
-def download_with_retry(url, dest_path, max_retries=3, delay=2):
-    for attempt in range(1, max_retries + 1):
-        try:
-            r = requests.get(url)
-            r.raise_for_status()
-            with open(dest_path, "wb") as f:
-                f.write(r.content)
-            return
-        except Exception as e:
-            print(f"[Tentativo {attempt}] Errore durante il download da {url}: {e}")
-            if attempt < max_retries:
-                print(f"Aspetto {delay} secondi e ritento...")
-                time.sleep(delay)
-            else:
-                print(f"❌ Impossibile scaricare {url} dopo {max_retries} tentativi.")
-                raise
-
-def download_protos(dest_dir):
-    for proto in PROTO_FILES:
-        url = f"{BASE_URL}/{proto}"
-        print(f"📥 Scarico {proto}...")
-        download_with_retry(url, dest_dir / proto)
-
-def download_nanopb(dest_dir):
-    print("📥 Scarico nanopb.proto...")
-    dest_path = dest_dir / "nanopb.proto"
-    download_with_retry(NANOPB_URL, dest_path)
-
-def compile_protos(proto_root):
-    print("🛠️  Compilo i file .proto...")
-    result = subprocess.run([
-        "protoc",
-        f"--proto_path={proto_root}",
-        f"--proto_path={proto_root / 'nanopb'}",
-        f"--python_out={proto_root}",
-        *[str(Path("meshtastic") / proto) for proto in PROTO_FILES]
-    ], cwd=proto_root, capture_output=True)
+def compile_protos(proto_dir):
+    """Compila i .proto in moduli Python usando protoc."""
+    proto_files = [str(f) for f in Path(proto_dir).glob("*.proto")]
+    result = subprocess.run(
+        ["protoc", "--proto_path", proto_dir, "--python_out", proto_dir] + proto_files,
+        cwd=proto_dir,
+        capture_output=True,
+    )
     if result.returncode != 0:
-        print("❌ Errore durante la compilazione:")
-        print(result.stderr.decode())
-        exit(1)
+        print("Errore compilando i .proto:", result.stderr.decode())
+        sys.exit(1)
 
-def main():
-    ensure_directory(PROTO_DIR)
-    ensure_directory(NANOPB_DIR)
-    download_protos(PROTO_DIR)
-    download_nanopb(NANOPB_DIR)
-    compile_protos(PROTO_ROOT)
-    print("✅ Moduli protobuf pronti.")
+def load_modules(proto_dir):
+    """Carica dinamicamente i moduli Python generati da protoc."""
+    modules = {}
+    for py_file in Path(proto_dir).glob("*_pb2.py"):
+        name = py_file.stem
+        spec = importlib.util.spec_from_file_location(name, py_file)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        modules[name] = mod
+    return modules
 
-# Questo controllo permette anche l'import di main() da altri file (come in mqtt.py)
-if __name__ == "__main__":
-    main()
+# Preparazione moduli protobuf al volo
+PROTO_DIR = tempfile.mkdtemp()
+download_all_protos(PROTO_DIR)
+compile_protos(PROTO_DIR)
+proto_modules = load_modules(PROTO_DIR)
+
+mqtt_pb2 = proto_modules["mqtt_pb2"]
+mesh_pb2 = proto_modules["mesh_pb2"]
+
+def decode_meshtastic_message(payload_bytes):
+    """Decodifica un payload MQTT Meshtastic in formato Protobuf."""
+    try:
+        envelope = mqtt_pb2.ServiceEnvelope()
+        envelope.ParseFromString(payload_bytes)
+
+        decoded = {
+            "channel_id": envelope.channel_id,
+            "gateway_id": envelope.gateway_id,
+        }
+
+        if envelope.HasField("packet"):
+            data_packet = mesh_pb2.Data()
+            data_packet.ParseFromString(envelope.packet)
+            decoded["packet"] = data_packet
+        else:
+            decoded["packet"] = None
+
+        return decoded
+
+    except DecodeError as e:
+        print(f"Errore nella decodifica: {e}")
+        return None

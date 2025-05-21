@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-Client Meshtastic esteso:
-- Salva tutti i pacchetti ricevuti in SQLite
-- Espone una pagina web per consultarli
-- Permette gestione del nodo
-"""
-
 import argparse
 import json
 import logging
@@ -19,10 +12,14 @@ import requests
 from meshtastic.util import findPorts
 from pubsub import pub
 from flask import Flask, jsonify
-from db_utils import update_node_info
+from db_utils import update_node_info, save_packet, init_db
 
 DB_FILE = "packets.db"
 app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def home():
+    return "<h1>MeshSpy Client è attivo</h1><p>Usa <a href='/packets'>/packets</a> per i dati.</p>"
 
 @app.route("/packets", methods=["GET"])
 def get_all_packets():
@@ -48,42 +45,7 @@ def get_packets_grouped():
     ])
 
 def start_web_server():
-    @app.route("/", methods=["GET"])
-    def home():
-        return "<h1>MeshSpy Client è attivo</h1><p>Usa <a href='/packets'>/packets</a> per i dati.</p>"
-
     app.run(host="0.0.0.0", port=5000)
-    
-def init_db():
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS packets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                from_node TEXT,
-                to_node TEXT,
-                message TEXT,
-                packet_type TEXT,
-                raw_json TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
-
-def save_packet(packet):
-    raw_json = json.dumps(packet)
-    from_node = packet.get("from", "")
-    to_node = packet.get("to", "")
-    packet_type = packet.get("decoded", {}).get("portnum", "")
-    message = packet.get("decoded", {}).get("payload", None)
-
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("""
-            INSERT INTO packets (from_node, to_node, message, packet_type, raw_json)
-            VALUES (?, ?, ?, ?, ?)
-        """, (from_node, to_node, message, packet_type, raw_json))
-        conn.commit()
 
 def on_receive(packet, interface, server_url):
     try:
@@ -132,6 +94,20 @@ def set_owner_name(iface, long_name, short_name=None):
     iface.localNode.setOwner(long_name, short_name)
     print(f"Nome utente impostato a: {long_name} ({short_name})" if short_name else long_name)
 
+def connect_with_retry(devPath, max_attempts=5, delay=5):
+    attempt = 0
+    while attempt < max_attempts:
+        try:
+            logging.info(f"[Tentativo {attempt+1}/{max_attempts}] Connessione al nodo su {devPath}...")
+            iface = meshtastic.serial_interface.SerialInterface(devPath=devPath)
+            return iface
+        except Exception as e:
+            logging.warning(f"Connessione fallita: {e}")
+            attempt += 1
+            time.sleep(delay)
+    logging.error("❌ Impossibile connettersi al nodo Meshtastic dopo vari tentativi.")
+    sys.exit(1)
+
 def main():
     parser = argparse.ArgumentParser(description="Client Meshtastic avanzato")
     parser.add_argument("--port", default=None, help="Porta seriale o 'auto'")
@@ -151,7 +127,6 @@ def main():
     pub.subscribe(lambda p, i: on_receive(p, i, args.server_url), "meshtastic.receive")
     pub.subscribe(on_connection, "meshtastic.connection.established")
 
-    # Porta auto-detect
     devPath = args.port
     if args.port is None or args.port == "auto":
         ports = findPorts()
@@ -161,7 +136,7 @@ def main():
         devPath = ports[0]
         logging.info(f"[AUTO] Trovato nodo su {devPath}")
 
-    iface = meshtastic.serial_interface.SerialInterface(devPath=devPath)
+    iface = connect_with_retry(devPath)
 
     try:
         if args.send_text:

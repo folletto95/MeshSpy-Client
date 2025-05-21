@@ -82,15 +82,15 @@ def save_packet(packet):
         conn.commit()
 
 def on_receive(packet, interface, server_url):
-    logging.info(f"Ricevuto pacchetto: {packet}")
-    save_packet(packet)
     try:
+        logging.info(f"Ricevuto pacchetto: {packet}")
+        save_packet(packet)
         if server_url:
             resp = requests.post(server_url, json=packet)
             resp.raise_for_status()
             logging.info(f"Inoltrato al server: {resp.status_code}")
     except Exception as e:
-        logging.error(f"Errore invio al server: {e}")
+        logging.warning(f"[on_receive] Errore durante il salvataggio o inoltro pacchetto: {e}")
 
 def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")

@@ -5,7 +5,8 @@ set -e
 # === CONFIG ===
 PROTO_DIR="backend/protos/meshtastic"
 OUT_DIR="backend/meshtastic_protos"
-MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/refs/heads/master/meshtastic"
+MESHTASTIC_VERSION="v2.1.11"  # ✅ Usa una versione stabile
+MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTASTIC_VERSION}/meshtastic"
 NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
 
 # === LISTA PROTO UFFICIALE - NON TOCCARE ===
@@ -19,7 +20,14 @@ PROTO_FILES=(
   "rtttl.proto" "storeforward.proto" "telemetry.proto" "xmodem.proto"
 )
 
-echo "📁 Creo directory..."
+# === VERIFICHE AMBIENTE ===
+command -v protoc >/dev/null 2>&1 || { echo "❌ 'protoc' non trovato. Installalo prima di procedere."; exit 1; }
+PYTHON_BIN="${VENV_PYTHON:-$(which python3)}"
+command -v "$PYTHON_BIN" >/dev/null 2>&1 || { echo "❌ Python non trovato."; exit 1; }
+
+# === PREPARAZIONE ===
+echo "🧹 Pulizia vecchi file .proto..."
+rm -rf "$PROTO_DIR"
 mkdir -p "$PROTO_DIR"
 mkdir -p "$OUT_DIR"
 
@@ -49,7 +57,7 @@ fi
 echo "🛠️  Compilo i .proto in $OUT_DIR..."
 
 for file in "${PROTO_FILES[@]}"; do
-  python3 -m grpc_tools.protoc \
+  "$PYTHON_BIN" -m grpc_tools.protoc \
     -Ibackend/protos \
     -Ibackend/protos/meshtastic \
     --python_out="$OUT_DIR" \

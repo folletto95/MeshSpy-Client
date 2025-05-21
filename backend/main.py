@@ -12,7 +12,7 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, WebSocket, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, FileResponse
+from fastapi.responses import PlainTextResponse, FileResponse, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
@@ -61,18 +61,17 @@ app.add_middleware(
 
 # === API endpoints ===
 @app.get("/metrics", include_in_schema=False)
-async def metrics() -> PlainTextResponse:
+async def metrics() -> Response:
     nodes = load_nodes_as_dict()
     nodes_total.set(len(nodes))
     gps_nodes = sum(
         1 for node in nodes.values()
         if node.data.get("latitude") and node.data.get("longitude")
     )
-    nodes_with_gps.set(gps_nodes)
-    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-@app.get("/")
-async def root() -> FileResponse | PlainTextResponse:
+@app.get("/", response_model=None)
+async def root():
     index = ROOT_DIR / "static" / "index.html"
     return FileResponse(index) if index.exists() else PlainTextResponse("MeshSpy API")
 

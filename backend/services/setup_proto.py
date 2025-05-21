@@ -10,6 +10,7 @@ from pathlib import Path
 # Percorso base ufficiale dei file .proto
 MESHTASTIC_PROTO_BASE = "https://raw.githubusercontent.com/meshtastic/protobufs/refs/heads/master/meshtastic/"
 
+# ⚠️ NON TOCCARE QUESTA LISTA
 MESHTASTIC_PROTO_FILES = [
     "admin.proto", "apponly.proto", "atak.proto", "cannedmessages.proto", 
     "channel.proto", "clientonly.proto", "config.proto",
@@ -21,7 +22,7 @@ MESHTASTIC_PROTO_FILES = [
 ]
 
 def download_all_protos(proto_dir):
-    """Scarica tutti i file .proto dal repository Meshtastic se non esistono."""
+    """Scarica i file .proto nella struttura corretta solo se mancanti."""
     meshtastic_dir = os.path.join(proto_dir, "meshtastic")
     os.makedirs(meshtastic_dir, exist_ok=True)
     for proto in MESHTASTIC_PROTO_FILES:
@@ -31,7 +32,7 @@ def download_all_protos(proto_dir):
             url = f"{MESHTASTIC_PROTO_BASE}{proto}"
             response = requests.get(url)
             if response.status_code == 404:
-                print(f"⚠️  ERRORE: {url} non trovato (404)")
+                print(f"❌ ERRORE 404: {url}")
                 continue
             response.raise_for_status()
             with open(proto_path, "wb") as f:
@@ -40,20 +41,21 @@ def download_all_protos(proto_dir):
             print(f"✅ {proto} già presente, skip.")
 
 def compile_protos(proto_dir):
-    """Compila i .proto in moduli Python usando protoc."""
+    """Compila i file .proto in Python usando protoc."""
     meshtastic_dir = os.path.join(proto_dir, "meshtastic")
     proto_files = [str(f) for f in Path(meshtastic_dir).glob("*.proto")]
     result = subprocess.run(
-        ["protoc", "--proto_path", meshtastic_dir, "--python_out", meshtastic_dir] + proto_files,
+        ["protoc", "--proto_path=meshtastic", "--python_out=meshtastic"] + [f.name for f in Path(meshtastic_dir).glob("*.proto")],
         cwd=proto_dir,
         capture_output=True,
     )
     if result.returncode != 0:
-        print("Errore compilando i .proto:", result.stderr.decode())
+        print("❌ Errore compilando i .proto:")
+        print(result.stderr.decode())
         sys.exit(1)
 
 def load_modules(proto_dir):
-    """Carica dinamicamente i moduli Python generati da protoc."""
+    """Carica i moduli Python generati da protoc."""
     modules = {}
     meshtastic_dir = os.path.join(proto_dir, "meshtastic")
     for py_file in Path(meshtastic_dir).glob("*_pb2.py"):
@@ -64,14 +66,14 @@ def load_modules(proto_dir):
         modules[name] = mod
     return modules
 
-# Preparazione moduli protobuf al volo
+# ▶️ Esecuzione
 PROTO_DIR = tempfile.mkdtemp()
 download_all_protos(PROTO_DIR)
 compile_protos(PROTO_DIR)
 proto_modules = load_modules(PROTO_DIR)
 
-mqtt_pb2 = proto_modules["mqtt_pb2"]
-mesh_pb2 = proto_modules["mesh_pb2"]
+mqtt_pb2 = proto_modules.get("mqtt_pb2")
+mesh_pb2 = proto_modules.get("mesh_pb2")
 
 def decode_meshtastic_message(payload_bytes):
     """Decodifica un payload MQTT Meshtastic in formato Protobuf."""
@@ -94,5 +96,5 @@ def decode_meshtastic_message(payload_bytes):
         return decoded
 
     except DecodeError as e:
-        print(f"Errore nella decodifica: {e}")
+        print(f"❌ Errore decodifica protobuf: {e}")
         return None

@@ -9,3 +9,4 @@ aiomqtt
 pydantic-settings
 prometheus-client
 protobuf
+grpcio-tools

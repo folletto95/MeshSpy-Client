@@ -24,10 +24,9 @@ from backend.routes import ws_logs
 from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
 
-api_router = APIRouter()
-
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "meshtastic_protos"))
+
+api_router = APIRouter()
 
 # .env & logging
 ROOT_DIR = Path(__file__).resolve().parent

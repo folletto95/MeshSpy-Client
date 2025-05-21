@@ -8,17 +8,18 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROTO_ROOT = BASE_DIR / "meshtastic_protos"
 PROTO_DIR = PROTO_ROOT / "meshtastic"
+NANOPB_DIR = PROTO_ROOT / "nanopb"
 BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
+NANOPB_URL = "https://raw.githubusercontent.com/nanopb/nanopb/master/generator/proto/nanopb.proto"
 
 # Full .proto file list from repo
 PROTO_FILES = [
     "admin.proto", "apponly.proto", "atak.proto", "cannedmessages.proto",
     "channel.proto", "clientonly.proto", "config.proto", "connection_status.proto",
-    "device_ui.proto", "deviceonly.proto",
-    "interdevice.proto", "localonly.proto", "mesh.proto", "module_config.proto",
-    "mqtt.proto", "paxcount.proto", "portnums.proto", "powermon.proto",
-    "remote_hardware.proto", "rtttl.proto", "storeforward.proto",
-    "telemetry.proto", "xmodem.proto"
+    "device_ui.proto", "deviceonly.proto", "interdevice.proto", "localonly.proto",
+    "mesh.proto", "module_config.proto", "mqtt.proto", "paxcount.proto",
+    "portnums.proto", "powermon.proto", "remote_hardware.proto", "rtttl.proto",
+    "storeforward.proto", "telemetry.proto", "xmodem.proto"
 ]
 
 def ensure_directory(path):
@@ -36,11 +37,20 @@ def download_protos(dest_dir):
         with open(dest_dir / proto, "wb") as f:
             f.write(r.content)
 
+def download_nanopb(dest_dir):
+    print("Scarico nanopb.proto...")
+    dest_path = dest_dir / "nanopb.proto"
+    r = requests.get(NANOPB_URL)
+    r.raise_for_status()
+    with open(dest_path, "wb") as f:
+        f.write(r.content)
+
 def compile_protos(proto_root):
     print("Compilo i file .proto...")
     result = subprocess.run([
         "protoc",
         f"--proto_path={proto_root}",
+        f"--proto_path={proto_root / 'nanopb'}",
         f"--python_out={proto_root}",
         *[str(Path("meshtastic") / proto) for proto in PROTO_FILES]
     ], cwd=proto_root, capture_output=True)
@@ -51,7 +61,9 @@ def compile_protos(proto_root):
 
 def main():
     ensure_directory(PROTO_DIR)
+    ensure_directory(NANOPB_DIR)
     download_protos(PROTO_DIR)
+    download_nanopb(NANOPB_DIR)
     compile_protos(PROTO_ROOT)
     print("✅ Moduli protobuf pronti.")
 

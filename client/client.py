@@ -157,7 +157,7 @@ def main():
         if not ports:
             logging.error("❌ Nessun dispositivo Meshtastic trovato automaticamente.")
             sys.exit(1)
-        devPath = ports[0].devPath
+        devPath = ports[0]
         logging.info(f"[AUTO] Trovato nodo su {devPath}")
 
     iface = meshtastic.serial_interface.SerialInterface(devPath=devPath)

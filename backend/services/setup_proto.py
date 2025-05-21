@@ -2,6 +2,7 @@
 import os
 import subprocess
 import requests
+import time
 from pathlib import Path
 
 # Base path settings
@@ -28,22 +29,34 @@ def ensure_directory(path):
     if not init_file.exists():
         init_file.touch()
 
+
+def download_with_retry(url, dest_path, max_retries=3, delay=2):
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.get(url)
+            r.raise_for_status()
+            with open(dest_path, "wb") as f:
+                f.write(r.content)
+            return
+        except Exception as e:
+            print(f"[Tentativo {attempt}] Errore durante il download da {url}: {e}")
+            if attempt < max_retries:
+                print(f"Aspetto {delay} secondi e ritento...")
+                time.sleep(delay)
+            else:
+                print(f"❌ Impossibile scaricare {url} dopo {max_retries} tentativi.")
+                raise
+
 def download_protos(dest_dir):
     for proto in PROTO_FILES:
         url = f"{BASE_URL}/{proto}"
         print(f"Scarico {proto}...")
-        r = requests.get(url)
-        r.raise_for_status()
-        with open(dest_dir / proto, "wb") as f:
-            f.write(r.content)
+        download_with_retry(url, dest_dir / proto)
 
 def download_nanopb(dest_dir):
     print("Scarico nanopb.proto...")
     dest_path = dest_dir / "nanopb.proto"
-    r = requests.get(NANOPB_URL)
-    r.raise_for_status()
-    with open(dest_path, "wb") as f:
-        f.write(r.content)
+    download_with_retry(NANOPB_URL, dest_path)
 
 def compile_protos(proto_root):
     print("Compilo i file .proto...")

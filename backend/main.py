@@ -4,8 +4,6 @@ import asyncio
 import json
 import logging
 import os
-import shutil
-import subprocess
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,12 +16,12 @@ from fastapi.responses import PlainTextResponse, FileResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
-# Configurazione percorso
+# === Percorsi e setup ===
 ROOT_DIR = Path(__file__).resolve().parent
 PROTO_DIR = ROOT_DIR / "meshtastic_protos"
 sys.path.insert(0, str(PROTO_DIR))
 
-# Importazioni backend
+# === Import servizi ===
 from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
@@ -31,7 +29,7 @@ from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
 from meshtastic import mqtt_pb2
 
-# Logging & .env
+# === Logging & .env ===
 load_dotenv(ROOT_DIR / ".env")
 
 logging.basicConfig(
@@ -40,7 +38,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("meshspy.main")
 
-# FastAPI e CORS
+# === FastAPI & Middleware ===
 api_router = APIRouter()
 
 @asynccontextmanager
@@ -61,27 +59,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# === API endpoints ===
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> PlainTextResponse:
     nodes = load_nodes_as_dict()
     nodes_total.set(len(nodes))
-    gps_nodes = sum(1 for node in nodes.values() if node.data.get("latitude") and node.data.get("longitude"))
+    gps_nodes = sum(
+        1 for node in nodes.values()
+        if node.data.get("latitude") and node.data.get("longitude")
+    )
     nodes_with_gps.set(gps_nodes)
     return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/")
-async def root() -> FileResponse:
+async def root() -> FileResponse | PlainTextResponse:
     index = ROOT_DIR / "static" / "index.html"
     return FileResponse(index) if index.exists() else PlainTextResponse("MeshSpy API")
-
-class WiFiConfig(BaseModel):
-    ssid: str
-    password: str
-    broker_host: str | None = None
-    broker_port: int | None = None
-
-class RequestLocation(BaseModel):
-    node_id: str
 
 @app.get("/health")
 async def health() -> dict[str, str]:
@@ -118,6 +111,10 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
         logger.warning("WebSocket chiuso: %s", exc)
     finally:
         await ws.close()
+
+# === POST ===
+class RequestLocation(BaseModel):
+    node_id: str
 
 @app.post("/request-position")
 async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):

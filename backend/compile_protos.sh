@@ -10,7 +10,7 @@ MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTA
 NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
 REQUIREMENTS_FILE="requirements.txt"
 
-# === LISTA PROTO UFFICIALE - NON TOCCARE ===
+# === LISTA PROTO UFFICIALE - NON TOCCARE   ===
 PROTO_FILES=(
   "admin.proto" "apponly.proto" "atak.proto" "cannedmessages.proto"
   "channel.proto" "clientonly.proto" "config.proto"

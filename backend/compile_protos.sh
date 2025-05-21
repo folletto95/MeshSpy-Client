@@ -49,7 +49,7 @@ fi
 echo "🛠️  Compilo i .proto in $OUT_DIR..."
 
 for file in "${PROTO_FILES[@]}"; do
-  python -m grpc_tools.protoc \
+  python3 -m grpc_tools.protoc \
     -Ibackend/protos \
     -Ibackend/protos/meshtastic \
     --python_out="$OUT_DIR" \

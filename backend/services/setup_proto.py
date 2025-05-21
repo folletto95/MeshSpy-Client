@@ -13,7 +13,7 @@ PROTO_FILES = [
     "interdevice.proto", "localonly.proto", "mesh.proto", "module_config.proto",
     "mqtt.proto", "paxcount.proto", "portnums.proto", "powermon.proto",
     "remote_hardware.proto", "rtttl.proto", "storeforward.proto",
-    "telemetry.proto", "util.proto", "xmodem.proto"
+    "telemetry.proto", "xmodem.proto"
 ]
 
 def ensure_directory(path):

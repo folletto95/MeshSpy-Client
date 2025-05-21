@@ -1,4 +1,3 @@
-
 import os
 import subprocess
 import requests
@@ -29,7 +28,6 @@ def ensure_directory(path):
     if not init_file.exists():
         init_file.touch()
 
-
 def download_with_retry(url, dest_path, max_retries=3, delay=2):
     for attempt in range(1, max_retries + 1):
         try:
@@ -50,16 +48,16 @@ def download_with_retry(url, dest_path, max_retries=3, delay=2):
 def download_protos(dest_dir):
     for proto in PROTO_FILES:
         url = f"{BASE_URL}/{proto}"
-        print(f"Scarico {proto}...")
+        print(f"📥 Scarico {proto}...")
         download_with_retry(url, dest_dir / proto)
 
 def download_nanopb(dest_dir):
-    print("Scarico nanopb.proto...")
+    print("📥 Scarico nanopb.proto...")
     dest_path = dest_dir / "nanopb.proto"
     download_with_retry(NANOPB_URL, dest_path)
 
 def compile_protos(proto_root):
-    print("Compilo i file .proto...")
+    print("🛠️  Compilo i file .proto...")
     result = subprocess.run([
         "protoc",
         f"--proto_path={proto_root}",
@@ -68,7 +66,7 @@ def compile_protos(proto_root):
         *[str(Path("meshtastic") / proto) for proto in PROTO_FILES]
     ], cwd=proto_root, capture_output=True)
     if result.returncode != 0:
-        print("Errore durante la compilazione:")
+        print("❌ Errore durante la compilazione:")
         print(result.stderr.decode())
         exit(1)
 
@@ -80,5 +78,6 @@ def main():
     compile_protos(PROTO_ROOT)
     print("✅ Moduli protobuf pronti.")
 
+# Questo controllo permette anche l'import di main() da altri file (come in mqtt.py)
 if __name__ == "__main__":
     main()

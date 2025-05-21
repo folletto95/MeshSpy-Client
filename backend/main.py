@@ -18,20 +18,21 @@ from fastapi.responses import PlainTextResponse, FileResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
+# Configurazione percorso
+ROOT_DIR = Path(__file__).resolve().parent
+PROTO_DIR = ROOT_DIR / "meshtastic_protos"
+sys.path.insert(0, str(PROTO_DIR))
+
+# Importazioni backend
 from backend.services.mqtt import mqtt_service, get_mqtt_service
 from backend.services.db import get_display_name, load_nodes_as_dict
 from backend.routes import ws_logs
 from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
 from backend.services import setup_proto
-from backend.meshtastic_protos.meshtastic import mqtt_pb2
+from meshtastic import mqtt_pb2
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "meshtastic_protos"))
-
-api_router = APIRouter()
-
-# .env & logging
-ROOT_DIR = Path(__file__).resolve().parent
+# Logging & .env
 load_dotenv(ROOT_DIR / ".env")
 
 logging.basicConfig(
@@ -40,9 +41,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("meshspy.main")
 
-PROTO_REPO = "https://github.com/meshtastic/protobufs"
-PROTO_DIR = ROOT_DIR / "meshtastic_protos"
-COMPILED_DIR = ROOT_DIR / "meshtastic_protos" / "meshtastic"
+# FastAPI e CORS
+api_router = APIRouter()
 
 def ensure_protobufs_compiled():
     setup_proto.main()

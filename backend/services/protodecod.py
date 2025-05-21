@@ -7,6 +7,7 @@ log = logging.getLogger("meshspy.protodecod")
 mqtt_pb2 = proto_modules.get("mqtt_pb2")
 mesh_pb2 = proto_modules.get("mesh_pb2")
 
+
 def decode_meshtastic_message(payload_bytes: bytes) -> dict:
     """
     Decodifica un messaggio MQTT Meshtastic da bytes a dizionario leggibile.

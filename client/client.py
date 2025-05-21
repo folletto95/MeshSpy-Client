@@ -27,6 +27,9 @@ def get_all_packets():
         c = conn.cursor()
         c.execute("SELECT id, from_node, to_node, message, packet_type, timestamp FROM packets ORDER BY timestamp DESC LIMIT 100")
         rows = c.fetchall()
+        print(f"[DEBUG] Trovati {len(rows)} pacchetti nel DB.")
+        for r in rows:
+            print(f"[DEBUG] Pacchetto: {r}")
     return jsonify([
         {"id": r[0], "from": r[1], "to": r[2], "message": r[3], "type": r[4], "timestamp": r[5]} for r in rows
     ])

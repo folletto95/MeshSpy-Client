@@ -35,12 +35,16 @@ for file in "${PROTO_FILES[@]}"; do
     }
 done
 
-# Scarica nanopb.proto
-echo "➡️  nanopb.proto"
-curl -sfL "$NANOPB_URL" -o "${PROTO_DIR}/nanopb.proto" || {
-    echo "❌ Errore scaricando nanopb.proto"
-    exit 1
-}
+# Scarica nanopb.proto se non esiste già
+if [ ! -f "${PROTO_DIR}/nanopb.proto" ]; then
+    echo "➡️  nanopb.proto"
+    curl -sfL "$NANOPB_URL" -o "${PROTO_DIR}/nanopb.proto" || {
+        echo "❌ Errore scaricando nanopb.proto"
+        exit 1
+    }
+else
+    echo "✅ nanopb.proto già presente, salto download."
+fi
 
 echo "🛠️  Compilo i .proto in $OUT_DIR..."
 python -m grpc_tools.protoc \

@@ -94,12 +94,19 @@ def on_receive(packet, interface, server_url):
 
 def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")
-    info = interface.myInfo
-    node = interface.localNode
+    info = getattr(interface, "myInfo", None)
+    if not info:
+        logging.warning("Info nodo non disponibile (myInfo is None)")
+        return
 
-    user = node.get("user", {}) if isinstance(node, dict) else getattr(node, "user", {})
-    long_name = user.get("longName", "N/A")
-    short_name = user.get("shortName", "N/A")
+    node = interface.localNode
+    try:
+        user = node.get("user", {}) if isinstance(node, dict) else getattr(node, "user", {})
+        long_name = user.get("longName", "N/A")
+        short_name = user.get("shortName", "N/A")
+    except Exception:
+        long_name = "Unknown"
+        short_name = "??"
 
     update_node_info(
         node_num=info.my_node_num,
@@ -108,6 +115,7 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
         hw_model=info.hardware_model,
         firmware_version=info.version
     )
+
 
 def print_node_info(iface):
     info = iface.myInfo

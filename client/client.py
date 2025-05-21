@@ -52,7 +52,7 @@ def start_web_server():
 
 def on_receive(packet, interface, server_url):
     try:
-        logging.info(f"Ricevuto pacchetto: {packet}")
+        logging.info(f"[RECEIVE] Pacchetto ricevuto: {packet}")
         save_packet(packet)
         if server_url:
             resp = requests.post(server_url, json=packet)

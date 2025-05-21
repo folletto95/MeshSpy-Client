@@ -49,19 +49,35 @@ def init_db():
         conn.commit()
 
 def save_packet(packet):
-    logging.info(f"[SAVE] Ricevuto pacchetto: {packet}")
-    raw_json = json.dumps(packet)
-    from_node = packet.get("from", "")
-    to_node = packet.get("to", "")
-    packet_type = packet.get("decoded", {}).get("portnum", "")
-    message = packet.get("decoded", {}).get("payload", None)
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("""
-            INSERT INTO packets (from_node, to_node, message, packet_type, raw_json)
-            VALUES (?, ?, ?, ?, ?)
-        """, (from_node, to_node, message, packet_type, raw_json))
-        conn.commit()
+    try:
+        logging.info(f"[SAVE] Analizzo pacchetto: {packet}")
+
+        decoded = packet.get("decoded", {})
+        message = decoded.get("payload")
+        packet_type = decoded.get("portnum")
+        from_node = packet.get("from", "UNKNOWN")
+        to_node = packet.get("to", "UNKNOWN")
+        raw_json = json.dumps(packet)
+
+        if message is None:
+            logging.warning("[SAVE] Pacchetto scartato: manca 'payload'")
+            return
+        if packet_type is None:
+            logging.warning("[SAVE] Pacchetto scartato: manca 'portnum'")
+            return
+
+        with sqlite3.connect(DB_FILE) as conn:
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO packets (from_node, to_node, message, packet_type, raw_json)
+                VALUES (?, ?, ?, ?, ?)
+            """, (from_node, to_node, message, packet_type, raw_json))
+            conn.commit()
+            logging.info("[SAVE] Pacchetto salvato nel DB")
+
+    except Exception as e:
+        logging.error(f"[SAVE] Errore nel salvataggio pacchetto: {e}")
+
 
 def save_command(cmd, payload):
     with sqlite3.connect(DB_FILE) as conn:

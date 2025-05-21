@@ -30,9 +30,15 @@ if [ -f ".env" ]; then
   export $(grep -v '^#' .env | xargs)
 fi
 
-echo "[INFO] Installo dipendenze da requirements.txt..."
+echo "[INFO] Verifico pacchetti..."
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+
+if ! $VENV_DIR/bin/python3 -c "import flask, meshtastic, requests, paho.mqtt.client, pypubsub, dotenv" 2>/dev/null; then
+    echo "[INFO] Installo dipendenze da requirements.txt..."
+    pip install -r requirements.txt
+else
+    echo "[INFO] Tutti i pacchetti necessari sono già presenti."
+fi
 
 echo "[INFO] Avvio client.py..."
 python3 client.py "$@"

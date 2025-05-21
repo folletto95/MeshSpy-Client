@@ -5,11 +5,15 @@ from pathlib import Path
 
 PROTO_DIR = Path(__file__).resolve().parent.parent / "meshtastic_protos"
 BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
+
 PROTO_FILES = [
-    "admin.proto", "channel.proto", "config.proto", "data.proto", "device.proto",
-    "environment.proto", "hardware.proto", "mesh.proto", "mqtt.proto",
-    "remote_hardware.proto", "routing.proto", "store.proto", "telemetry.proto",
-    "util.proto"
+    "admin.proto", "apponly.proto", "atak.proto", "cannedmessages.proto",
+    "channel.proto", "clientonly.proto", "config.proto", "connection_status.proto",
+    "device_ui.proto", "deviceonly.proto", "environment.proto", "hardware.proto",
+    "interdevice.proto", "localonly.proto", "mesh.proto", "module_config.proto",
+    "mqtt.proto", "paxcount.proto", "portnums.proto", "powermon.proto",
+    "remote_hardware.proto", "routing.proto", "rtttl.proto", "storeforward.proto",
+    "telemetry.proto", "util.proto", "xmodem.proto"
 ]
 
 def ensure_directory(path):

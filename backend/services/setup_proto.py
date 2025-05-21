@@ -12,7 +12,7 @@ PROTO_FILES = [
     "device_ui.proto", "deviceonly.proto",
     "interdevice.proto", "localonly.proto", "mesh.proto", "module_config.proto",
     "mqtt.proto", "paxcount.proto", "portnums.proto", "powermon.proto",
-    "remote_hardware.proto", "routing.proto", "rtttl.proto", "storeforward.proto",
+    "remote_hardware.proto", "rtttl.proto", "storeforward.proto",
     "telemetry.proto", "util.proto", "xmodem.proto"
 ]
 

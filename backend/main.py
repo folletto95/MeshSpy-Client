@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,9 @@ from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
 
 api_router = APIRouter()
+
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "meshtastic_protos"))
 
 # .env & logging
 ROOT_DIR = Path(__file__).resolve().parent

@@ -3,8 +3,9 @@
 set -e
 
 # === CONFIG ===
-PROTO_DIR="protos/meshtastic"
-OUT_DIR="meshtastic_protos"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROTO_DIR="$SCRIPT_DIR/protos/meshtastic"
+OUT_DIR="$SCRIPT_DIR/meshtastic_protos"
 MESHTASTIC_VERSION="v2.6.8"  # ✅ Usa una versione stabile
 MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTASTIC_VERSION}/meshtastic"
 NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
@@ -67,15 +68,17 @@ fi
 # === COMPILAZIONE ===
 echo "🛠️  Compilo i .proto in $OUT_DIR..."
 
+pushd "$PROTO_DIR" >/dev/null
 for file in "${PROTO_FILES[@]}"; do
-  "$PYTHON_BIN" -m grpc_tools.protoc \
-    -Ibackend/protos \
-    -Ibackend/protos/meshtastic \
-    --python_out="$OUT_DIR" \
-    "$PROTO_DIR/$file" || {
+ "$PYTHON_BIN" -m grpc_tools.protoc \
+  -I. \
+  -I.. \
+  --python_out="$OUT_DIR" \
+  "$file" || {
       echo "❌ Errore compilando $file"
       exit 1
   }
 done
+popd >/dev/null
 
 echo "✅ Compilazione completata!"

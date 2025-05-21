@@ -31,8 +31,9 @@ for file in "${PROTO_FILES[@]}"; do
 done
 
 echo "🛠️  Compilo i .proto in $OUT_DIR..."
-python3 -m grpc_tools.protoc \
+python -m grpc_tools.protoc \
   -Ibackend/protos \
+  -Ibackend/protos/meshtastic \
   --python_out=backend/meshtastic_protos \
   backend/protos/meshtastic/*.proto || {
     echo "❌ Errore compilando i .proto"

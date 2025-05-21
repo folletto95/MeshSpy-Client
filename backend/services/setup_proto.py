@@ -8,7 +8,7 @@ import requests
 from pathlib import Path
 
 # Percorso base ufficiale dei file .proto
-MESHTASTIC_PROTO_BASE = "https://raw.githubusercontent.com/meshtastic/protobufs/main"
+MESHTASTIC_PROTO_BASE = "https://raw.githubusercontent.com/meshtastic/protobufs/refs/heads/master/meshtastic/"
 
 MESHTASTIC_PROTO_FILES = [
     "admin.proto", "apponly.proto", "channel.proto", "clientonly.proto", "config.proto",

@@ -20,12 +20,6 @@ from backend.services.message_handler import insert_or_update_node_from_message
 from backend.state import AppState
 from backend.metrics import messages_received
 
-# Verifica e genera automaticamente i moduli protobuf se non esistono
-proto_path = Path(__file__).resolve().parent.parent / "meshtastic_protos" / "mqtt_pb2.py"
-if not proto_path.exists():
-    from backend.services import setup_proto
-    setup_proto.main()
-
 from google.protobuf.message import DecodeError
 from backend.meshtastic_protos.meshtastic import mqtt_pb2
 
@@ -39,6 +33,7 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+
 
 class NodeData:
     def __init__(self, name: str, data: dict):

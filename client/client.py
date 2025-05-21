@@ -19,6 +19,7 @@ import requests
 from meshtastic.util import findPorts
 from pubsub import pub
 from flask import Flask, jsonify
+from db_utils import update_node_info
 
 DB_FILE = "packets.db"
 app = Flask(__name__)
@@ -80,9 +81,6 @@ def save_packet(packet):
         """, (from_node, to_node, message, packet_type, raw_json))
         conn.commit()
 
-def update_node_info(*args, **kwargs):
-    pass  # Placeholder, definizione esterna
-
 def on_receive(packet, interface, server_url):
     logging.info(f"Ricevuto pacchetto: {packet}")
     save_packet(packet)
@@ -111,11 +109,11 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
         short_name = "??"
 
     update_node_info(
-        node_num=getattr(info, "my_node_num", "N/A"),
-        long_name=long_name,
-        short_name=short_name,
-        hw_model=getattr(info, "hardware_model", "Unknown"),
-        firmware_version=getattr(info, "version", "Unknown")
+    node_num=getattr(info, "my_node_num", "N/A"),
+    long_name=long_name,
+    short_name=short_name,
+    hw_model=getattr(info, "hardware_model", "Unknown"),
+    firmware_version=getattr(info, "version", "Unknown")
     )
 
 def print_node_info(iface):

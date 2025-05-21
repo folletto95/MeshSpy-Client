@@ -14,10 +14,11 @@ BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/master/meshta
 PROTO_FILES = [
     "admin.proto", "apponly.proto", "atak.proto", "cannedmessages.proto",
     "channel.proto", "clientonly.proto", "config.proto", "connection_status.proto",
-    "device_ui.proto", "deviceonly.proto", "interdevice.proto", "localonly.proto",
-    "mesh.proto", "module_config.proto", "mqtt.proto", "paxcount.proto",
-    "portnums.proto", "powermon.proto", "remote_hardware.proto", "routing.proto",
-    "rtttl.proto", "storeforward.proto", "telemetry.proto", "util.proto", "xmodem.proto"
+    "device_ui.proto", "deviceonly.proto",
+    "interdevice.proto", "localonly.proto", "mesh.proto", "module_config.proto",
+    "mqtt.proto", "paxcount.proto", "portnums.proto", "powermon.proto",
+    "remote_hardware.proto", "rtttl.proto", "storeforward.proto",
+    "telemetry.proto", "xmodem.proto"
 ]
 
 def ensure_directory(path):

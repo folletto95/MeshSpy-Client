@@ -22,12 +22,17 @@ MESHTASTIC_PROTO_FILES = [
 
 def download_all_protos(proto_dir):
     """Scarica tutti i file .proto dal repository Meshtastic se non esistono."""
+    meshtastic_dir = os.path.join(proto_dir, "meshtastic")
+    os.makedirs(meshtastic_dir, exist_ok=True)
     for proto in MESHTASTIC_PROTO_FILES:
-        proto_path = os.path.join(proto_dir, proto)
+        proto_path = os.path.join(meshtastic_dir, proto)
         if not os.path.exists(proto_path):
             print(f"📥 Scarico {proto}...")
-            url = f"{MESHTASTIC_PROTO_BASE}/{proto}"
+            url = f"{MESHTASTIC_PROTO_BASE}{proto}"
             response = requests.get(url)
+            if response.status_code == 404:
+                print(f"⚠️  ERRORE: {url} non trovato (404)")
+                continue
             response.raise_for_status()
             with open(proto_path, "wb") as f:
                 f.write(response.content)
@@ -36,9 +41,10 @@ def download_all_protos(proto_dir):
 
 def compile_protos(proto_dir):
     """Compila i .proto in moduli Python usando protoc."""
-    proto_files = [str(f) for f in Path(proto_dir).glob("*.proto")]
+    meshtastic_dir = os.path.join(proto_dir, "meshtastic")
+    proto_files = [str(f) for f in Path(meshtastic_dir).glob("*.proto")]
     result = subprocess.run(
-        ["protoc", "--proto_path", proto_dir, "--python_out", proto_dir] + proto_files,
+        ["protoc", "--proto_path", meshtastic_dir, "--python_out", meshtastic_dir] + proto_files,
         cwd=proto_dir,
         capture_output=True,
     )
@@ -49,7 +55,8 @@ def compile_protos(proto_dir):
 def load_modules(proto_dir):
     """Carica dinamicamente i moduli Python generati da protoc."""
     modules = {}
-    for py_file in Path(proto_dir).glob("*_pb2.py"):
+    meshtastic_dir = os.path.join(proto_dir, "meshtastic")
+    for py_file in Path(meshtastic_dir).glob("*_pb2.py"):
         name = py_file.stem
         spec = importlib.util.spec_from_file_location(name, py_file)
         mod = importlib.util.module_from_spec(spec)

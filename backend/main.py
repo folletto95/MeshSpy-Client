@@ -3,6 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import shutil
+import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -22,9 +25,7 @@ from backend.state import AppState
 
 api_router = APIRouter()
 
-# ────────────────────────────────────────────────────────────────────────────
 # .env & logging
-# ────────────────────────────────────────────────────────────────────────────
 ROOT_DIR = Path(__file__).resolve().parent
 load_dotenv(ROOT_DIR / ".env")
 
@@ -34,18 +35,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger("meshspy.main")
 
-# ────────────────────────────────────────────────────────────────────────────
-# FastAPI app with lifespan
-# ────────────────────────────────────────────────────────────────────────────
+PROTO_REPO = "https://github.com/meshtastic/protobufs"
+PROTO_DIR = ROOT_DIR / "meshtastic_protos"
+COMPILED_DIR = ROOT_DIR / "meshtastic_protos" / "meshtastic"
+
+def ensure_protobufs_compiled():
+    if not COMPILED_DIR.exists() or not any(COMPILED_DIR.glob("*_pb2.py")):
+        logger.info("📥 Scarico e compilo i file protobuf di Meshtastic...")
+        if PROTO_DIR.exists():
+            shutil.rmtree(PROTO_DIR)
+        subprocess.run(["git", "clone", PROTO_REPO, str(PROTO_DIR)], check=True)
+        subprocess.run([
+            "python", "-m", "grpc_tools.protoc",
+            "-I", str(PROTO_DIR),
+            "--python_out", str(PROTO_DIR),
+            *(str(p) for p in Path(PROTO_DIR).glob("*.proto"))
+        ], check=True)
+        (PROTO_DIR / "__init__.py").touch()
+        (COMPILED_DIR / "__init__.py").touch()
+        logger.info("✅ Compilazione completata.")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    AppState().nodes.update(load_nodes_as_dict())  # ✅ ripristina i nodi dal DB
+    ensure_protobufs_compiled()
+    AppState().nodes.update(load_nodes_as_dict())
     logger.info("📦 Nodi caricati dal DB all'avvio")
     asyncio.create_task(mqtt_service.start())
     logger.info("MQTT listener avviato in background")
     yield
-    #await mqtt_service.stop()
-    #logger.info("MQTT listener fermato")
 
 app = FastAPI(title="MeshSpy API", version="0.0.1", lifespan=lifespan)
 app.include_router(ws_logs.router)
@@ -57,9 +74,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ────────────────────────────────────────────────────────────────────────────
-# Prometheus metrics
-# ────────────────────────────────────────────────────────────────────────────
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> PlainTextResponse:
     nodes = load_nodes_as_dict()
@@ -68,17 +82,11 @@ async def metrics() -> PlainTextResponse:
     nodes_with_gps.set(gps_nodes)
     return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-# ────────────────────────────────────────────────────────────────────────────
-# Static GUI root
-# ────────────────────────────────────────────────────────────────────────────
 @app.get("/")
 async def root() -> FileResponse:
     index = ROOT_DIR / "static" / "index.html"
     return FileResponse(index) if index.exists() else PlainTextResponse("MeshSpy API")
 
-# ────────────────────────────────────────────────────────────────────────────
-# Pydantic models
-# ────────────────────────────────────────────────────────────────────────────
 class WiFiConfig(BaseModel):
     ssid: str
     password: str
@@ -88,16 +96,10 @@ class WiFiConfig(BaseModel):
 class RequestLocation(BaseModel):
     node_id: str
 
-# ────────────────────────────────────────────────────────────────────────────
-# Health check
-# ────────────────────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 
-# ────────────────────────────────────────────────────────────────────────────
-# List nodes (REST)
-# ────────────────────────────────────────────────────────────────────────────
 @app.get("/nodes")
 def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
     return {
@@ -108,9 +110,6 @@ def list_nodes(svc=Depends(get_mqtt_service)) -> dict[str, dict]:
         for node_id, payload in svc.nodes.items()
     }
 
-# ────────────────────────────────────────────────────────────────────────────
-# WebSocket streaming
-# ────────────────────────────────────────────────────────────────────────────
 @app.websocket("/ws/nodes")
 async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
     await ws.accept()
@@ -133,9 +132,6 @@ async def ws_nodes(ws: WebSocket, svc=Depends(get_mqtt_service)) -> None:
     finally:
         await ws.close()
 
-# ────────────────────────────────────────────────────────────────────────────
-# Richiesta posizione a nodo specifico (POST)
-# ────────────────────────────────────────────────────────────────────────────
 @app.post("/request-position")
 async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service)):
     topic = f"mesh/request/{data.node_id}/location"
@@ -153,5 +149,3 @@ async def request_position(data: RequestLocation, svc=Depends(get_mqtt_service))
 
     logger.info("📡 Richiesta posizione inviata a %s su topic %s", data.node_id, topic)
     return {"status": "ok", "requested": data.node_id}
-    logger.info("✅ MQTT client assegnato: %s", self.client)
-    

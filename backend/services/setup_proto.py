@@ -4,7 +4,7 @@ import requests
 from pathlib import Path
 
 PROTO_DIR = Path(__file__).resolve().parent.parent / "meshtastic_protos"
-BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/main"
+BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
 PROTO_FILES = [
     "admin.proto", "channel.proto", "config.proto", "data.proto", "device.proto",
     "environment.proto", "hardware.proto", "mesh.proto", "mqtt.proto",

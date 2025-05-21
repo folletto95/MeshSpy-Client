@@ -5,8 +5,9 @@ set -e  # Stoppa lo script se c'è un errore
 PROTO_DIR="backend/protos/meshtastic"
 OUT_DIR="backend/meshtastic_protos/meshtastic"
 REPO_BASE="https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
+NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
 
-# Lista ufficiale (NON TOCCARE) dio cane
+# Lista ufficiale (NON TOCCARE)
 PROTO_FILES=(
     "admin.proto" "apponly.proto" "atak.proto" "cannedmessages.proto"
     "channel.proto" "clientonly.proto" "config.proto" "connection_status.proto"
@@ -15,12 +16,16 @@ PROTO_FILES=(
     "portnums.proto" "powermon.proto" "remote_hardware.proto" "rtttl.proto"
     "storeforward.proto" "telemetry.proto" "xmodem.proto"
 )
-source ../backend/.venv/bin/activate  # <-- Adatta il path se serve
+
+# Attiva il venv - cambia path se serve
+source ../backend/.venv/bin/activate
+
 echo "📁 Creo directory..."
 mkdir -p "$PROTO_DIR"
 mkdir -p "$OUT_DIR"
 
 echo "📥 Scarico i .proto..."
+# Scarica i file Meshtastic
 for file in "${PROTO_FILES[@]}"; do
     url="${REPO_BASE}/${file}"
     echo "➡️  $file"
@@ -29,6 +34,13 @@ for file in "${PROTO_FILES[@]}"; do
         exit 1
     }
 done
+
+# Scarica nanopb.proto
+echo "➡️  nanopb.proto"
+curl -sfL "$NANOPB_URL" -o "${PROTO_DIR}/nanopb.proto" || {
+    echo "❌ Errore scaricando nanopb.proto"
+    exit 1
+}
 
 echo "🛠️  Compilo i .proto in $OUT_DIR..."
 python -m grpc_tools.protoc \

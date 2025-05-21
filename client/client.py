@@ -94,27 +94,26 @@ def on_receive(packet, interface, server_url):
 
 def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")
-    info = getattr(interface, "myInfo", None)
-    if not info:
-        logging.warning("Info nodo non disponibile (myInfo is None)")
-        return
-
-    node = interface.localNode
     try:
+        info = getattr(interface, "myInfo", None)
+        if not info:
+            logging.warning("Info nodo non disponibile (myInfo is None)")
+            return
+
+        node = interface.localNode
         user = node.get("user", {}) if isinstance(node, dict) else getattr(node, "user", {})
         long_name = user.get("longName", "N/A")
         short_name = user.get("shortName", "N/A")
-    except Exception:
-        long_name = "Unknown"
-        short_name = "??"
 
-    update_node_info(
-    node_num=getattr(info, "my_node_num", "N/A"),
-    long_name=long_name,
-    short_name=short_name,
-    hw_model=getattr(info, "hardware_model", "Unknown"),
-    firmware_version=getattr(info, "version", "Unknown")
-    )
+        update_node_info(
+            node_num=getattr(info, "my_node_num", "N/A"),
+            long_name=long_name,
+            short_name=short_name,
+            hw_model=getattr(info, "hardware_model", "Unknown"),
+            firmware_version=getattr(info, "version", "Unknown")
+        )
+    except Exception as e:
+        logging.error(f"[on_connection] Errore inatteso: {e}")
 
 def print_node_info(iface):
     info = iface.myInfo

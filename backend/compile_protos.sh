@@ -3,8 +3,9 @@
 set -e
 
 # === CONFIG ===
-PROTO_DIR="backend/protos/meshtastic"
-OUT_DIR="backend/meshtastic_protos"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROTO_DIR="$SCRIPT_DIR/protos/meshtastic"
+OUT_DIR="$SCRIPT_DIR/meshtastic_protos"
 MESHTASTIC_VERSION="v2.6.8"  # ✅ Usa una versione stabile
 MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTASTIC_VERSION}/meshtastic"
 NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"

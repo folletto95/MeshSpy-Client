@@ -8,6 +8,7 @@ OUT_DIR="backend/meshtastic_protos"
 MESHTASTIC_VERSION="v2.6.8"  # ✅ Usa una versione stabile
 MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTASTIC_VERSION}/meshtastic"
 NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
+REQUIREMENTS_FILE="requirements.txt"
 
 # === LISTA PROTO UFFICIALE - NON TOCCARE ===
 PROTO_FILES=(
@@ -24,6 +25,15 @@ PROTO_FILES=(
 command -v protoc >/dev/null 2>&1 || { echo "❌ 'protoc' non trovato. Installalo prima di procedere."; exit 1; }
 PYTHON_BIN="${VENV_PYTHON:-$(which python3)}"
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || { echo "❌ Python non trovato."; exit 1; }
+
+# === INSTALLAZIONE REQUISITI ===
+if [ -f "$REQUIREMENTS_FILE" ]; then
+  echo "📦 Installo dipendenze da $REQUIREMENTS_FILE..."
+  "$PYTHON_BIN" -m pip install --upgrade pip
+  "$PYTHON_BIN" -m pip install -r "$REQUIREMENTS_FILE"
+else
+  echo "⚠️  Nessun file $REQUIREMENTS_FILE trovato. Assicurati che grpcio-tools sia installato."
+fi
 
 # === PREPARAZIONE ===
 echo "🧹 Pulizia vecchi file .proto..."

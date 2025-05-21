@@ -6,7 +6,7 @@ PROTO_DIR="backend/protos/meshtastic"
 OUT_DIR="backend/meshtastic_protos/meshtastic"
 REPO_BASE="https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
 
-# Lista ufficiale (NON TOCCARE)
+# Lista ufficiale (NON TOCCARE) dio cane
 PROTO_FILES=(
     "admin.proto" "apponly.proto" "atak.proto" "cannedmessages.proto"
     "channel.proto" "clientonly.proto" "config.proto" "connection_status.proto"

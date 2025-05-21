@@ -4,11 +4,13 @@ import subprocess
 import requests
 from pathlib import Path
 
+# Base path settings
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROTO_ROOT = BASE_DIR / "meshtastic_protos"
 PROTO_DIR = PROTO_ROOT / "meshtastic"
 BASE_URL = "https://raw.githubusercontent.com/meshtastic/protobufs/master/meshtastic"
 
+# Full .proto file list from repo
 PROTO_FILES = [
     "admin.proto", "apponly.proto", "atak.proto", "cannedmessages.proto",
     "channel.proto", "clientonly.proto", "config.proto", "connection_status.proto",
@@ -33,7 +35,7 @@ def download_protos(dest_dir):
         with open(dest_dir / proto, "wb") as f:
             f.write(r.content)
 
-def compile_protos(proto_root, proto_dir):
+def compile_protos(proto_root):
     print("Compilo i file .proto...")
     result = subprocess.run([
         "protoc",
@@ -49,8 +51,8 @@ def compile_protos(proto_root, proto_dir):
 def main():
     ensure_directory(PROTO_DIR)
     download_protos(PROTO_DIR)
-    compile_protos(PROTO_ROOT, PROTO_DIR)
-    print("✅ Protobuf installati correttamente.")
+    compile_protos(PROTO_ROOT)
+    print("✅ Moduli protobuf pronti.")
 
 if __name__ == "__main__":
     main()

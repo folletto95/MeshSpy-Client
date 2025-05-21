@@ -49,6 +49,7 @@ def init_db():
         conn.commit()
 
 def save_packet(packet):
+    logging.info(f"[SAVE] Ricevuto pacchetto: {packet}")
     raw_json = json.dumps(packet)
     from_node = packet.get("from", "")
     to_node = packet.get("to", "")

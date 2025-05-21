@@ -51,6 +51,7 @@ def start_web_server():
     app.run(host="0.0.0.0", port=5000)
 
 def on_receive(packet, interface, server_url):
+    logging.info("[DEBUG] on_receive invocato")
     try:
         logging.info(f"[RECEIVE] Pacchetto ricevuto: {packet}")
         save_packet(packet)

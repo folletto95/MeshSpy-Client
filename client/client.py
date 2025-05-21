@@ -48,8 +48,12 @@ def get_packets_grouped():
     ])
 
 def start_web_server():
-    app.run(host="0.0.0.0", port=5000)
+    @app.route("/", methods=["GET"])
+    def home():
+        return "<h1>MeshSpy Client è attivo</h1><p>Usa <a href='/packets'>/packets</a> per i dati.</p>"
 
+    app.run(host="0.0.0.0", port=5000)
+    
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()

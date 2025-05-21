@@ -5,6 +5,7 @@ import os
 from collections import defaultdict
 from contextlib import AsyncExitStack
 from typing import Optional
+from pathlib import Path
 
 from aiomqtt import Client, MqttError
 from fastapi import Depends
@@ -33,6 +34,11 @@ MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 
+# Verifica e genera automaticamente i moduli protobuf se non esistono
+proto_path = Path(__file__).resolve().parent.parent / "meshtastic_protos" / "mqtt_pb2.py"
+if not proto_path.exists():
+    from backend.services import setup_proto
+    setup_proto.main()
 
 class NodeData:
     def __init__(self, name: str, data: dict):

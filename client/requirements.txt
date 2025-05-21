@@ -4,3 +4,5 @@ requests
 flask
 paho-mqtt
 python-dotenv
+grpcio
+grpcio-tools

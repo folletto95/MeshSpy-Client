@@ -15,7 +15,7 @@ PROTO_FILES=(
     "portnums.proto" "powermon.proto" "remote_hardware.proto" "rtttl.proto"
     "storeforward.proto" "telemetry.proto" "xmodem.proto"
 )
-
+source ../backend/.venv/bin/activate  # <-- Adatta il path se serve
 echo "📁 Creo directory..."
 mkdir -p "$PROTO_DIR"
 mkdir -p "$OUT_DIR"

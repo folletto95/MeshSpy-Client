@@ -24,6 +24,7 @@ from backend.routes import ws_logs
 from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
 from backend.services import setup_proto
+from backend.meshtastic_protos.meshtastic import mqtt_pb2
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "meshtastic_protos"))
 

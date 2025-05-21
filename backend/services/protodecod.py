@@ -7,31 +7,31 @@ from google.protobuf.message import DecodeError
 import requests
 from pathlib import Path
 
+# Percorso base ufficiale dei file .proto
+MESHTASTIC_PROTO_BASE = "https://raw.githubusercontent.com/meshtastic/protobufs/main"
+
+MESHTASTIC_PROTO_FILES = [
+    "admin.proto", "apponly.proto", "channel.proto", "clientonly.proto", "config.proto",
+    "data.proto", "device.proto", "device_ui.proto", "environment.proto", "hardware.proto",
+    "interdevice.proto", "mesh.proto", "module_config.proto", "mqtt.proto",
+    "paxcount.proto", "portnums.proto", "remote_hardware.proto", "routing.proto",
+    "rtttl.proto", "storeforward.proto", "store.proto", "telemetry.proto", "util.proto", "xmodem.proto"
+]
 
 def download_all_protos(proto_dir):
     """Scarica tutti i file .proto dal repository Meshtastic."""
-    base_url = "https://raw.githubusercontent.com/meshtastic/protobufs/main"
-    proto_files = [
-        "admin.proto", "channel.proto", "config.proto", "data.proto", "device.proto",
-        "environment.proto", "hardware.proto", "mesh.proto", "mqtt.proto",
-        "remote_hardware.proto", "routing.proto", "store.proto", "telemetry.proto",
-        "util.proto"
-    ]
-
-    for proto in proto_files:
-        url = f"{base_url}/{proto}"
+    for proto in MESHTASTIC_PROTO_FILES:
+        url = f"{MESHTASTIC_PROTO_BASE}/{proto}"
         response = requests.get(url)
         response.raise_for_status()
         with open(os.path.join(proto_dir, proto), "wb") as f:
             f.write(response.content)
 
-
 def compile_protos(proto_dir):
-    """Compila i .proto in moduli Python."""
-    proto_files = list(Path(proto_dir).glob("*.proto"))
-    proto_filenames = [str(p.name) for p in proto_files]
+    """Compila i .proto in moduli Python usando protoc."""
+    proto_files = [str(f) for f in Path(proto_dir).glob("*.proto")]
     result = subprocess.run(
-        ["protoc", "--proto_path", proto_dir, "--python_out", proto_dir] + proto_filenames,
+        ["protoc", "--proto_path", proto_dir, "--python_out", proto_dir] + proto_files,
         cwd=proto_dir,
         capture_output=True,
     )
@@ -39,9 +39,8 @@ def compile_protos(proto_dir):
         print("Errore compilando i .proto:", result.stderr.decode())
         sys.exit(1)
 
-
 def load_modules(proto_dir):
-    """Carica dinamicamente tutti i moduli Python generati da protoc."""
+    """Carica dinamicamente i moduli Python generati da protoc."""
     modules = {}
     for py_file in Path(proto_dir).glob("*_pb2.py"):
         name = py_file.stem
@@ -51,8 +50,7 @@ def load_modules(proto_dir):
         modules[name] = mod
     return modules
 
-
-# Preparazione moduli protobuf
+# Preparazione moduli protobuf al volo
 PROTO_DIR = tempfile.mkdtemp()
 download_all_protos(PROTO_DIR)
 compile_protos(PROTO_DIR)
@@ -60,7 +58,6 @@ proto_modules = load_modules(PROTO_DIR)
 
 mqtt_pb2 = proto_modules["mqtt_pb2"]
 mesh_pb2 = proto_modules["mesh_pb2"]
-
 
 def decode_meshtastic_message(payload_bytes):
     """Decodifica un payload MQTT Meshtastic in formato Protobuf."""

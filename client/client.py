@@ -111,11 +111,11 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
         short_name = "??"
 
     update_node_info(
-        node_num=info.my_node_num,
+        node_num=getattr(info, "my_node_num", "N/A"),
         long_name=long_name,
         short_name=short_name,
-        hw_model=info.hardware_model,
-        firmware_version=info.version
+        hw_model=getattr(info, "hardware_model", "Unknown"),
+        firmware_version=getattr(info, "version", "Unknown")
     )
 
 def print_node_info(iface):

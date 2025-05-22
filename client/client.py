@@ -11,87 +11,13 @@ import meshtastic.serial_interface
 import requests
 from meshtastic.util import findPorts
 from pubsub import pub
-from flask import Flask, jsonify
+from flask import Flask
+from rest_api import start_web_server
 from db_utils import update_node_info, save_packet, init_db
-from receive import setup_receive  # Importazione della nuova funzione
+from receive import setup_receive  # Nuovo modulo separato
 
 DB_FILE = "packets.db"
 app = Flask(__name__)
-
-@app.route("/", methods=["GET"])
-def home():
-    return "<h1>MeshSpy Client è attivo</h1><p>Usa <a href='/packets'>/packets</a> per i dati.</p>"
-
-@app.route("/packets", methods=["GET"])
-def get_all_packets():
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("SELECT id, from_node, to_node, message, packet_type, timestamp FROM packets ORDER BY timestamp DESC LIMIT 100")
-        rows = c.fetchall()
-        print(f"[DEBUG] Trovati {len(rows)} pacchetti nel DB.")
-        for r in rows:
-            print(f"[DEBUG] Pacchetto: {r}")
-    return jsonify([
-        {"id": r[0], "from": r[1], "to": r[2], "message": r[3], "type": r[4], "timestamp": r[5]} for r in rows
-    ])
-
-@app.route("/packets/grouped", methods=["GET"])
-def get_packets_grouped():
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("""
-            SELECT from_node, COUNT(*), MAX(timestamp) 
-            FROM packets GROUP BY from_node ORDER BY MAX(timestamp) DESC
-        """)
-        rows = c.fetchall()
-    return jsonify([
-        {"from": r[0], "count": r[1], "last_seen": r[2]} for r in rows
-    ])
-
-def start_web_server():
-    app.run(host="0.0.0.0", port=5000)
-
-def on_receive(packet, interface, server_url):
-    logging.info("[DEBUG] on_receive invocato")
-    logging.info(f"[RECEIVE] Packet: {json.dumps(packet, indent=2)}")
-    try:
-        save_packet(packet)
-        if server_url:
-            resp = requests.post(server_url, json=packet)
-            resp.raise_for_status()
-            logging.info(f"Inoltrato al server: {resp.status_code}")
-    except Exception as e:
-        logging.warning(f"[on_receive] Errore: {e}")
-
-def on_connection(interface, topic=pub.AUTO_TOPIC):
-    logging.info("Connesso al nodo Meshtastic")
-    try:
-        interface.showInfo()
-    except Exception as e:
-        logging.warning(f"[on_connection] showInfo fallito: {e}")
-    try:
-        info = getattr(interface, "myInfo", None)
-        logging.info(f"[DEBUG] myInfo: {info}")
-        logging.info(f"[DEBUG] iface.nodes: {interface.nodes}")
-        logging.info(f"[DEBUG] iface.localNode: {interface.localNode}")
-        if not info:
-            logging.warning("Info nodo non disponibile (myInfo is None)")
-            return
-
-        node = interface.localNode
-        user = node.get("user", {}) if isinstance(node, dict) else getattr(node, "user", {})
-        long_name = user.get("longName", "N/A")
-        short_name = user.get("shortName", "N/A")
-
-        update_node_info(
-            node_num=getattr(info, "my_node_num", "N/A"),
-            long_name=long_name,
-            short_name=short_name,
-            hw_model=getattr(info, "hardware_model", "Unknown"),
-            firmware_version=getattr(info, "version", "Unknown")
-        )
-    except Exception as e:
-        logging.error(f"[on_connection] Errore: {e}")
 
 def print_node_info(iface):
     info = iface.myInfo

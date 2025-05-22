@@ -1,46 +1,38 @@
-from flask import Flask, jsonify, request
-from db_utils import save_command, save_position
-from meshtastic_utils import set_node_position
+from flask import Flask, jsonify
 import sqlite3
 
+DB_FILE = "packets.db"
 app = Flask(__name__)
 
-@app.route("/status", methods=["GET"])
-def status():
-    with sqlite3.connect("packets.db") as conn:
-        c = conn.cursor()
-        c.execute("SELECT * FROM node_info LIMIT 1")
-        node = c.fetchone()
-        c.execute("SELECT lat, lng, timestamp FROM position ORDER BY timestamp DESC LIMIT 1")
-        pos = c.fetchone()
-    return jsonify({
-        "node": {
-            "id": node[1], "name": node[2], "short": node[3],
-            "hw": node[4], "fw": node[5], "updated": node[6]
-        } if node else None,
-        "last_position": {
-            "lat": pos[0], "lng": pos[1], "timestamp": pos[2]
-        } if pos else None
-    })
+@app.route("/", methods=["GET"])
+def home():
+    return "<h1>MeshSpy Client è attivo</h1><p>Usa <a href='/packets'>/packets</a> per i dati.</p>"
 
-@app.route("/set-position", methods=["POST"])
-def set_position():
-    data = request.json
-    lat = data.get("lat")
-    lng = data.get("lng")
-    if lat is not None and lng is not None:
-        save_position(lat, lng, source="rest")
-        save_command("set-position", data)
-        set_node_position(lat, lng)
-        return jsonify({"status": "ok"})
-    return jsonify({"error": "lat/lng richiesti"}), 400
-
-@app.route("/logs", methods=["GET"])
-def logs():
-    with sqlite3.connect("packets.db") as conn:
+@app.route("/packets", methods=["GET"])
+def get_all_packets():
+    with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()
-        c.execute("SELECT cmd, payload, timestamp FROM commands ORDER BY timestamp DESC LIMIT 50")
+        c.execute("SELECT id, from_node, to_node, message, packet_type, timestamp FROM packets ORDER BY timestamp DESC LIMIT 100")
+        rows = c.fetchall()
+        print(f"[DEBUG] Trovati {len(rows)} pacchetti nel DB.")
+        for r in rows:
+            print(f"[DEBUG] Pacchetto: {r}")
+    return jsonify([
+        {"id": r[0], "from": r[1], "to": r[2], "message": r[3], "type": r[4], "timestamp": r[5]} for r in rows
+    ])
+
+@app.route("/packets/grouped", methods=["GET"])
+def get_packets_grouped():
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT from_node, COUNT(*), MAX(timestamp) 
+            FROM packets GROUP BY from_node ORDER BY MAX(timestamp) DESC
+        """)
         rows = c.fetchall()
     return jsonify([
-        {"cmd": r[0], "payload": r[1], "timestamp": r[2]} for r in rows
+        {"from": r[0], "count": r[1], "last_seen": r[2]} for r in rows
     ])
+
+def start_web_server():
+    app.run(host="0.0.0.0", port=5000)

@@ -30,6 +30,8 @@ from backend.metrics import nodes_total, nodes_with_gps
 from backend.state import AppState
 from meshtastic import mqtt_pb2
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "meshtastic_protos")))
+
 # === Logging & .env ===
 load_dotenv(ROOT_DIR / ".env")
 

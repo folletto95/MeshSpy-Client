@@ -43,3 +43,11 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
             return
     except Exception as e:
         logging.warning(f"[on_connection] eccezione durante accesso alle info nodo: {e}")
+def print_node_info(iface):
+    try:
+        print("Owner:", iface.getLongName(), f"({iface.getShortName()})")
+        print("My info:", json.dumps(iface.myInfo.asDict(), indent=2))
+        print("Metadata:", json.dumps(iface.metadata.asDict(), indent=2))
+        print("Nodes in mesh:", json.dumps(iface.nodes, indent=2))
+    except Exception as e:
+        logging.error(f"Errore durante la stampa delle info del nodo: {e}")

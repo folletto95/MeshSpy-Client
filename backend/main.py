@@ -20,6 +20,7 @@ from pydantic import BaseModel
 ROOT_DIR = Path(__file__).resolve().parent
 PROTO_DIR = ROOT_DIR / "meshtastic_protos"
 sys.path.insert(0, str(PROTO_DIR))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # === Import servizi ===
 from backend.services.mqtt import mqtt_service, get_mqtt_service

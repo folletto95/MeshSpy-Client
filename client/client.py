@@ -13,13 +13,7 @@ from meshtastic.util import findPorts
 from pubsub import pub
 from flask import Flask, jsonify
 from db_utils import update_node_info, save_packet, init_db
-
-from receive import setup_receive
-
-
-setup_receive(iface, args.server_url)
-
-
+from receive import setup_receive  # Importazione della nuova funzione
 
 DB_FILE = "packets.db"
 app = Flask(__name__)
@@ -142,10 +136,6 @@ def main():
     if args.web:
         Thread(target=start_web_server, daemon=True).start()
 
-    pub.subscribe(lambda p, i: on_receive(p, i, args.server_url), "meshtastic.receive")
-    pub.subscribe(on_connection, "meshtastic.connection.established")
-    logging.info("[DEBUG] Subscrizione a 'meshtastic.receive' attiva")
-
     devPath = args.port
     if args.port is None or args.port == "auto":
         ports = findPorts()
@@ -156,6 +146,8 @@ def main():
         logging.info(f"[AUTO] Nodo trovato su {devPath}")
 
     iface = connect_with_retry(devPath)
+
+    setup_receive(iface, args.server_url)
 
     try:
         if args.send_text:

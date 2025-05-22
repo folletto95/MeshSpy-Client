@@ -1,5 +1,5 @@
 import logging
-from db_utils import update_node_info, save_packet
+from db_utils import update_node_info, save_packet_to_db
 from meshtastic_utils import print_node_info
 
 

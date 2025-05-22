@@ -2,7 +2,7 @@ import logging
 import json
 import requests
 from pubsub import pub
-from db_utils import save_packet
+from db_utils import save_packet_to_db
 
 iface = None
 

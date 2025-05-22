@@ -1,11 +1,16 @@
 #!/bin/bash
 
+set -e
+
 # === CONFIG ===
-PROTO_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/refs/heads/master"
-NANOPB_PROTO="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
-OUT_DIR="backend/meshtastic_protos"
-PROTO_DIR="protos"
-NANOPB_DIR="$PROTO_DIR/nanopb"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROTO_DIR="$SCRIPT_DIR/protos/meshtastic"
+NANOPB_DIR="$SCRIPT_DIR/protos/nanopb"
+OUT_DIR="$SCRIPT_DIR/meshtastic_protos"
+MESHTASTIC_VERSION="v2.6.8"
+MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTASTIC_VERSION}/meshtastic"
+NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
+REQUIREMENTS_FILE="requirements.txt"
 
 # === LISTA PROTO UFFICIALE - NON TOCCARE   ===
 PROTO_FILES=(
@@ -18,41 +23,59 @@ PROTO_FILES=(
   "rtttl.proto" "storeforward.proto" "telemetry.proto" "xmodem.proto"
 )
 
-# === SETUP ===
-echo "📁 Creo directory..."
-mkdir -p "$PROTO_DIR" "$NANOPB_DIR" "$OUT_DIR"
 
+# === VERIFICHE AMBIENTE ===
+command -v protoc >/dev/null 2>&1 || { echo "❌ 'protoc' non trovato. Installalo prima di procedere."; exit 1; }
+PYTHON_BIN="${VENV_PYTHON:-$(which python3)}"
+command -v "$PYTHON_BIN" >/dev/null 2>&1 || { echo "❌ Python non trovato."; exit 1; }
+
+# === INSTALLAZIONE REQUISITI ===
+if [ -f "$REQUIREMENTS_FILE" ]; then
+  echo "📦 Installo dipendenze da $REQUIREMENTS_FILE..."
+  "$PYTHON_BIN" -m pip install --upgrade pip
+  "$PYTHON_BIN" -m pip install -r "$REQUIREMENTS_FILE"
+  echo "✅ Dipendenze installate!"
+else
+  echo "⚠️ Nessun file $REQUIREMENTS_FILE trovato. Assicurati che grpcio-tools sia installato."
+fi
+
+# === PREPARAZIONE ===
 echo "🧹 Pulizia vecchi file .proto..."
-rm -f "$PROTO_DIR"/*.proto
-rm -f "$NANOPB_DIR"/*.proto
-rm -f "$OUT_DIR"/*.py
+rm -rf "$PROTO_DIR" "$NANOPB_DIR"
+mkdir -p "$PROTO_DIR" "$NANOPB_DIR" "$OUT_DIR/meshtastic_protos/nanopb"
 
-# === DOWNLOAD ===
 echo "📥 Scarico i .proto..."
-for file in "${PROTO_FILES[@]}"; do
-  echo "➡️   $file"
-  curl -sSfL "$PROTO_REPO/$file" -o "$PROTO_DIR/$file" || {
-    echo "❌ Errore scaricando $file"
+
+# Scarica i file Meshtastic
+for proto in "${PROTO_FILES[@]}"; do
+  echo "➡️  $proto"
+  curl -sfL "$MESHTASTIC_REPO/$proto" -o "$PROTO_DIR/$proto" || {
+    echo "❌ Errore scaricando $proto"
     exit 1
   }
 done
 
-# === NANOPB ===
-echo "➡️   nanopb.proto"
-curl -sSfL "$NANOPB_PROTO" -o "$NANOPB_DIR/nanopb.proto" || {
+# Scarica nanopb.proto
+echo "➡️  nanopb.proto"
+curl -sfL "$NANOPB_URL" -o "$NANOPB_DIR/nanopb.proto" || {
   echo "❌ Errore scaricando nanopb.proto"
   exit 1
 }
 
-# === COMPILE ===
-echo "🛠️   Compilo i .proto in $OUT_DIR..."
-python3 -m grpc_tools.protoc \
-  --proto_path="$PROTO_DIR" \
-  --proto_path="$NANOPB_DIR" \
-  --python_out="$OUT_DIR" \
-  "${PROTO_FILES[@]/#/$PROTO_DIR/}" "$NANOPB_DIR/nanopb.proto" || {
-    echo "❌  Errore compilando i .proto"
-    exit 1
-}
+# === COMPILAZIONE ===
+echo "🛠️  Compilo i .proto in $OUT_DIR..."
 
-echo "✅  Protobuf compilati con successo!"
+pushd "$PROTO_DIR" >/dev/null
+for file in "${PROTO_FILES[@]}"; do
+  "$PYTHON_BIN" -m grpc_tools.protoc \
+    -I. \
+    -I"$NANOPB_DIR" \
+    --python_out="$OUT_DIR" \
+    "$file" || {
+      echo "❌ Errore compilando $file"
+      exit 1
+  }
+done
+popd >/dev/null
+
+echo "✅ Compilazione completata!"

@@ -1,126 +1,211 @@
 import asyncio
+import json
 import logging
 import os
+from collections import defaultdict
+from contextlib import AsyncExitStack
 from typing import Optional
-import paho.mqtt.client as mqtt
+from pathlib import Path
+
+from aiomqtt import Client, MqttError
+from fastapi import Depends
+from dotenv import load_dotenv
+
+from backend.services.db import (
+    init_db,
+    get_db_path,
+    load_nodes_as_dict,
+)
+from backend.services.message_handler import insert_or_update_node_from_message
+from backend.state import AppState
+from backend.metrics import messages_received
+
+from google.protobuf.message import DecodeError
+from backend.meshtastic_protos.meshtastic import mqtt_pb2
 from google.protobuf.json_format import MessageToDict
-from backend.services import protodecod
-from backend.services.log_stream import log_stream_manager
+
+# Carica le variabili da .env
+load_dotenv()
 
 logger = logging.getLogger("meshspy.mqtt")
 
-VERBOSE = os.environ.get("VERBOSE_LOGGING", "0") == "1"
+MQTT_HOST = os.getenv("MQTT_HOST")
+MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+
+VERBOSE = os.getenv("VERBOSE_LOGS", "false").lower() == "true"
+
+class NodeData:
+    def __init__(self, name: str, data: dict):
+        self.name = name
+        self.data = data
+
 
 class MQTTService:
     def __init__(self):
-        self.client: Optional[mqtt.Client] = None
-        self.state = GlobalSettings()
-        # self.db = NodeDatabase()  # <- rimane commentato se non usato
-        self.reconnect_delay = 3
+        self.client: Optional[Client] = None
+        self.stack: Optional[AsyncExitStack] = None
+        self.nodes = AppState().nodes
+        self.nodes_by_id = {}
+        self.state = AppState()
+        self.db_path = get_db_path()
+        self.my_node_id = "Server-MeshSpy"
+        self._reconnect_task: Optional[asyncio.Task] = None
+        self._stopped = asyncio.Event()
+        self.connected = False
 
-    def start(self):
-        asyncio.create_task(self._listener())
+    async def start(self):
+        logger.info("🗄️   DB path usato da MQTT: %s", self.db_path)
+        init_db()
+        self.nodes.update(load_nodes_as_dict())
+        self._stopped.clear()
+        if not self._reconnect_task or self._reconnect_task.done():
+            self._reconnect_task = asyncio.create_task(self._connection_manager())
 
-    async def _listener(self):
-        while True:
+    async def stop(self):
+        logger.info("MQTT listener fermato")
+        self._stopped.set()
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
+        if self.stack:
+            await self.stack.aclose()
+
+    async def _connection_manager(self):
+        retry_delay = 3
+        max_delay = 60
+        while not self._stopped.is_set():
             try:
-                logger.info("⚙️  Avvio tentativo connessione MQTT...")
-                self.client = mqtt.Client()
-                self.client.on_connect = self._on_connect
-                self.client.on_message = self._on_message
-                self.client.connect(self.state.mqtt_broker, self.state.mqtt_port, 60)
-                self.client.loop_start()
+                logger.info("⚙️ Avvio tentativo connessione MQTT...")
+                self.stack = AsyncExitStack()
+                await self.stack.__aenter__()
+
+                client_ctx = Client(
+                    hostname=MQTT_HOST,
+                    port=MQTT_PORT,
+                    username=MQTT_USERNAME if MQTT_USERNAME else None,
+                    password=MQTT_PASSWORD if MQTT_PASSWORD else None,
+                    keepalive=60,
+                )
                 logger.info("📡 Client MQTT creato, in attesa di connessione...")
+                self.client = await self.stack.enter_async_context(client_ctx)
+                self.connected = True
+                logger.info("✅ Connessione MQTT stabilita!")
+
+                await self.client.subscribe(MQTT_TOPIC)
+                logger.info(f"🔔 Iscritto al topic: {MQTT_TOPIC}")
+
+                await self._listener()
+            except asyncio.CancelledError:
+                logger.info("MQTT reconnessione annullata (shutdown)")
                 break
             except Exception as e:
-                logger.error(f"❌ Errore nella connessione MQTT: {e}")
-                logger.info(f"Ritento la connessione MQTT tra {self.reconnect_delay} secondi...")
-                await asyncio.sleep(self.reconnect_delay)
+                self.connected = False
+                logger.error("❌ Errore nella connessione MQTT: %s", e)
+                try:
+                    if self.stack:
+                        await self.stack.aclose()
+                except Exception:
+                    pass
+                logger.info(f"Ritento la connessione MQTT tra {retry_delay} secondi...")
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, max_delay)
+            else:
+                retry_delay = 3
 
-    def _on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
-            logger.info("✅ Connessione MQTT stabilita!")
-            topic = self.state.mqtt_topic
-            self.client.subscribe(topic)
-            logger.info(f"🔔 Iscritto al topic: {topic}")
-        else:
-            logger.error(f"❌ Connessione MQTT fallita con codice: {rc}")
-
-    def _on_message(self, client, userdata, msg):
-        asyncio.create_task(self._handle_message(msg.topic, msg.payload))
+    async def _listener(self):
+        assert self.client is not None
+        try:
+            messages = self.client.messages
+            async for msg in messages:
+                await self._handle_message(msg.topic, msg.payload)
+        except Exception as e:
+            logger.exception("❌ Errore durante connessione MQTT (listener)")
+            raise
+        finally:
+            try:
+                if self.stack:
+                    self.connected = False
+                    await self.stack.aclose()
+            except Exception:
+                pass
 
     async def _handle_message(self, topic, payload):
+        node_id = None
+        message = None
         try:
-            decoded_str = payload.decode("utf-8")
-            if VERBOSE:
-                logger.debug(f"📩 Payload UTF-8 ricevuto da {topic}: {decoded_str}")
+            decoded = payload.decode("utf-8")
+            logger.debug("📩 Payload ricevuto (UTF-8): %s", decoded)
+            message = json.loads(decoded)
+            messages_received.inc()
+            node_id = str(message.get("from"))
         except UnicodeDecodeError as e:
             if VERBOSE:
-                logger.debug(f"Errore decoding UTF-8 del messaggio su {topic}: {e}")
+                logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
+            try:
+                envelope = mqtt_pb2.ServiceEnvelope()
+                envelope.ParseFromString(payload)
 
-        try:
-            envelope = protodecod.decode_protobuf(payload)
-            if envelope is None or not envelope.packet:
-                if VERBOSE:
-                    logger.debug("⚠️  Envelope o packet mancante, salto messaggio.")
+                if envelope.packet and envelope.packet.HasField("decoded"):
+                    decoded = envelope.packet.decoded
+
+                    # 🔍 DEBUG COMPLETO
+                    from google.protobuf.json_format import MessageToDict
+                    decoded_dict = MessageToDict(decoded, preserving_proto_field_name=True)
+                    logger.debug("📦 DEBUG decoded packet:\n%s", json.dumps(decoded_dict, indent=2))
+
+                    # Prova a estrarre l'id
+                    node_id = getattr(decoded, "id", None)
+                    if node_id:
+                        logger.info("📩 Messaggio protobuf da nodo: %s", node_id)
+                    else:
+                        if VERBOSE:
+                            logger.warning("⚠️ Nessun campo 'id' trovato in decoded.packet")
+
+                else:
+                    if VERBOSE:
+                        logger.warning("⚠️ Protobuf valido ma non contiene packet/decoded")
                 return
 
-            packet = envelope.packet
-            decoded = MessageToDict(packet, preserving_proto_field_name=True)
-
-            if "id" not in decoded:
+            except DecodeError as pe:
                 if VERBOSE:
-                    logger.debug("⚠️  Nessun campo 'id' trovato in decoded.packet")
+                    logger.warning("❌ Payload non riconosciuto come protobuf: %s", pe)
                 return
 
-            node_id = packet.from_
-            node_sender = topic.split("/")[-1]
+        except json.JSONDecodeError as e:
+            logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
+            return
 
-            node_data = {
-                "from": node_id,
-                "sender": node_sender,
-                "to": packet.to,
-                "id": packet.id,
-                "channel": packet.channel,
-                "timestamp": packet.timestamp,
-                "hop_start": packet.hop_start,
-                "hops_away": packet.hops_away,
-                "type": packet.decoded.WhichOneof("payload") if packet.HasField("decoded") else "",
-            }
+        if not node_id:
+            logger.warning("⚠️ Messaggio senza campo 'from': %s", message)
+            return
 
-            if packet.HasField("decoded"):
-                payload_type = packet.decoded.WhichOneof("payload")
-                if payload_type:
-                    payload_dict = MessageToDict(
-                        getattr(packet.decoded, payload_type),
-                        preserving_proto_field_name=True
-                    )
-                    node_data["payload"] = payload_dict
+        if node_id == self.my_node_id:
+            return
 
-            if packet.HasField("rx_meta"):
-                rx = packet.rx_meta
-                node_data["rssi"] = rx.rssi
-                node_data["snr"] = rx.snr
+        logger.info("📨 Messaggio valido da %s: %s", node_id, message)
 
-            if VERBOSE:
-                logger.debug(f"✅ Packet decodificato: {node_data}")
+        old_data = self.nodes.get(node_id)
+        merged_data = old_data.data.copy() if old_data else {}
 
-            # self.db.save_node(node_data)  # Attiva solo se usi DB
-            logger.info(f"📨 Messaggio valido da {node_id}")
+        for key, value in message.items():
+            if value is not None:
+                merged_data[key] = value
 
-        except UnicodeDecodeError as e:
-            if VERBOSE:
-                logger.debug(f"Errore decoding UTF-8 del messaggio su {topic}: {e}")
-        except Exception as e:
-            logger.warning(f"⚠️  Errore durante la decodifica protobuf: {e}")
+        self.nodes[node_id] = NodeData(name=node_id, data=merged_data)
+        insert_or_update_node_from_message(message)
 
-    def stop(self):
-        if self.client is not None:
-            self.client.loop_stop()
-            self.client.disconnect()
-            logger.info("📴 Disconnessione MQTT completata")
+    async def test_publish(self, topic="test/topic", payload="MQTT test da MeshSpy"):
+        if self.client:
+            await self.client.publish(topic, payload)
+            logger.info(f"📤 Messaggio MQTT inviato su '{topic}': '{payload}'")
+        else:
+            logger.error("❌ MQTT non connesso, impossibile inviare il messaggio.")
 
-mqtt_service = MQTTService()
 
 def get_mqtt_service() -> MQTTService:
-    return mqtt_service
+    return AppState().mqtt_service
+
+
+mqtt_service = get_mqtt_service()

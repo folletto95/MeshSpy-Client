@@ -22,6 +22,7 @@ from backend.metrics import messages_received
 
 from google.protobuf.message import DecodeError
 from backend.meshtastic_protos.meshtastic import mqtt_pb2
+from google.protobuf.json_format import MessageToDict
 
 # Carica le variabili da .env
 load_dotenv()
@@ -143,18 +144,30 @@ class MQTTService:
             try:
                 envelope = mqtt_pb2.ServiceEnvelope()
                 envelope.ParseFromString(payload)
+
                 if envelope.packet and envelope.packet.HasField("decoded"):
-                    if hasattr(envelope.packet.decoded, "id"):
-                        node_id = str(envelope.packet.decoded.id)
-                        logger.info("📩 Messaggio Protobuf ricevuto da %s", node_id)
+                    decoded = envelope.packet.decoded
+
+                    # 🔍 DEBUG COMPLETO
+                    from google.protobuf.json_format import MessageToDict
+                    decoded_dict = MessageToDict(decoded, preserving_proto_field_name=True)
+                    logger.debug("📦 DEBUG decoded packet:\n%s", json.dumps(decoded_dict, indent=2))
+
+                    # Prova a estrarre l'id
+                    node_id = getattr(decoded, "id", None)
+                    if node_id:
+                        logger.info("📩 Messaggio protobuf da nodo: %s", node_id)
                     else:
                         logger.warning("⚠️ Nessun campo 'id' trovato in decoded.packet")
+
                 else:
                     logger.warning("⚠️ Protobuf valido ma non contiene packet/decoded")
-                return  # Finisce qui, decodifica Protobuf fatta
+                return
+
             except DecodeError as pe:
                 logger.warning("❌ Payload non riconosciuto come protobuf: %s", pe)
                 return
+
         except json.JSONDecodeError as e:
             logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
             return

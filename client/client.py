@@ -52,22 +52,22 @@ def start_web_server():
 
 def on_receive(packet, interface, server_url):
     logging.info("[DEBUG] on_receive invocato")
+    logging.info(f"[RECEIVE] Packet: {json.dumps(packet, indent=2)}")
     try:
-        logging.info(f"[RECEIVE] Pacchetto ricevuto: {packet}")
         save_packet(packet)
         if server_url:
             resp = requests.post(server_url, json=packet)
             resp.raise_for_status()
             logging.info(f"Inoltrato al server: {resp.status_code}")
     except Exception as e:
-        logging.warning(f"[on_receive] Errore durante il salvataggio o inoltro pacchetto: {e}")
+        logging.warning(f"[on_receive] Errore: {e}")
 
 def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")
     try:
         interface.showInfo()
     except Exception as e:
-        logging.warning(f"[on_connection] Errore showInfo(): {e}")
+        logging.warning(f"[on_connection] showInfo fallito: {e}")
     try:
         info = getattr(interface, "myInfo", None)
         logging.info(f"[DEBUG] myInfo: {info}")
@@ -90,7 +90,7 @@ def on_connection(interface, topic=pub.AUTO_TOPIC):
             firmware_version=getattr(info, "version", "Unknown")
         )
     except Exception as e:
-        logging.error(f"[on_connection] Errore inatteso: {e}")
+        logging.error(f"[on_connection] Errore: {e}")
 
 def print_node_info(iface):
     info = iface.myInfo
@@ -137,7 +137,7 @@ def main():
 
     pub.subscribe(lambda p, i: on_receive(p, i, args.server_url), "meshtastic.receive")
     pub.subscribe(on_connection, "meshtastic.connection.established")
-    logging.info("[DEBUG] Subscrizione a 'meshtastic.receive' completata")
+    logging.info("[DEBUG] Subscrizione a 'meshtastic.receive' attiva")
 
     devPath = args.port
     if args.port is None or args.port == "auto":
@@ -146,7 +146,7 @@ def main():
             logging.error("❌ Nessun dispositivo Meshtastic trovato automaticamente.")
             sys.exit(1)
         devPath = ports[0]
-        logging.info(f"[AUTO] Trovato nodo su {devPath}")
+        logging.info(f"[AUTO] Nodo trovato su {devPath}")
 
     iface = connect_with_retry(devPath)
 
@@ -165,7 +165,7 @@ def main():
             while True:
                 time.sleep(1)
     except KeyboardInterrupt:
-        logging.info("Interrotto")
+        logging.info("Interrotto da tastiera")
     finally:
         iface.close()
 

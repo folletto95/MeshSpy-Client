@@ -35,6 +35,7 @@ MQTT_TOPIC = os.getenv("MQTT_TOPIC", "#")
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 
+VERBOSE = os.getenv("VERBOSE_LOGS", "false").lower() == "true"
 
 class NodeData:
     def __init__(self, name: str, data: dict):
@@ -140,7 +141,8 @@ class MQTTService:
             messages_received.inc()
             node_id = str(message.get("from"))
         except UnicodeDecodeError as e:
-            logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
+            if VERBOSE:
+                logger.warning("Errore decoding UTF-8 del messaggio su %s: %s", topic, e)
             try:
                 envelope = mqtt_pb2.ServiceEnvelope()
                 envelope.ParseFromString(payload)
@@ -158,14 +160,17 @@ class MQTTService:
                     if node_id:
                         logger.info("📩 Messaggio protobuf da nodo: %s", node_id)
                     else:
-                        logger.warning("⚠️ Nessun campo 'id' trovato in decoded.packet")
+                        if VERBOSE:
+                            logger.warning("⚠️ Nessun campo 'id' trovato in decoded.packet")
 
                 else:
-                    logger.warning("⚠️ Protobuf valido ma non contiene packet/decoded")
+                    if VERBOSE:
+                        logger.warning("⚠️ Protobuf valido ma non contiene packet/decoded")
                 return
 
             except DecodeError as pe:
-                logger.warning("❌ Payload non riconosciuto come protobuf: %s", pe)
+                if VERBOSE:
+                    logger.warning("❌ Payload non riconosciuto come protobuf: %s", pe)
                 return
 
         except json.JSONDecodeError as e:

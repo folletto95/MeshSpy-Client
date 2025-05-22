@@ -12,7 +12,7 @@ MESHTASTIC_REPO="https://raw.githubusercontent.com/meshtastic/protobufs/${MESHTA
 NANOPB_URL="https://raw.githubusercontent.com/nanopb/nanopb/refs/heads/master/generator/proto/nanopb.proto"
 REQUIREMENTS_FILE="requirements.txt"
 
-# === LISTA PROTO UFFICIALE - NON TOCCARE ===
+# === LISTA PROTO UFFICIALE - NON TOCCARE   ===
 PROTO_FILES=(
   "admin.proto" "apponly.proto" "atak.proto" "cannedmessages.proto"
   "channel.proto" "clientonly.proto" "config.proto"
@@ -22,6 +22,7 @@ PROTO_FILES=(
   "portnums.proto" "powermon.proto" "remote_hardware.proto"
   "rtttl.proto" "storeforward.proto" "telemetry.proto" "xmodem.proto"
 )
+
 
 # === VERIFICHE AMBIENTE ===
 command -v protoc >/dev/null 2>&1 || { echo "❌ 'protoc' non trovato. Installalo prima di procedere."; exit 1; }

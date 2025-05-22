@@ -19,38 +19,50 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_packet(packet):
-    logging.debug(f"Salvataggio del pacchetto: {packet}")
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        INSERT INTO packets (timestamp, sender, type, payload)
-        VALUES (?, ?, ?, ?)
-    ''', (
-        datetime.utcnow().isoformat(),
-        packet.get("from", "unknown"),
-        packet.get("decoded", {}).get("portnum", "unknown"),
-        str(packet)
-    ))
-    conn.commit()
-    conn.close()
+def save_packet_to_db(packet):
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS packets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                packet_json TEXT
+            )
+        ''')
+        c.execute('INSERT INTO packets (packet_json) VALUES (?)', (json.dumps(packet),))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[ERROR] Errore nel salvataggio pacchetto: {e}")
 
-def save_command(packet):
-    logging.debug(f"Salvataggio del comando: {packet}")
-    save_packet(packet)
 
-def save_position(packet):
-    logging.debug(f"Salvataggio della posizione: {packet}")
-    save_packet(packet)
+def save_command(command):
+    print(f"[DEBUG] Comando ricevuto da MQTT: {command}")
+    # Da implementare logica di salvataggio comando, se necessaria
+
+def save_position(position):
+    print(f"[DEBUG] Posizione ricevuta da MQTT: {position}")
+    # Da implementare logica di salvataggio posizione, se necessaria
 
 def get_all_packets():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT * FROM packets ORDER BY timestamp DESC")
-    rows = c.fetchall()
-    conn.close()
-    return rows
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT packet_json FROM packets")
+        rows = c.fetchall()
+        conn.close()
+        return [json.loads(row[0]) for row in rows]
+    except Exception as e:
+        print(f"[ERROR] Errore nel recupero pacchetti: {e}")
+        return []
+    
+def get_node_info():
+    # Placeholder: ritorna un esempio statico
+    return [{"nodeId": "dummy", "info": "placeholder"}]
 
-def update_node_info(node_id, info):
-    # Implementa la logica per aggiornare le informazioni del nodo
-    pass
+def get_db_connection():
+    return sqlite3.connect(DB_NAME)
+
+def update_node_position(node_id, position):
+    print(f"[DEBUG] Aggiorna posizione per {node_id}: {position}")
+    # Da implementare logica reale se necessario

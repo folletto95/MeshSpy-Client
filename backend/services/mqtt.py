@@ -22,7 +22,7 @@ from backend.services.state import AppState
 from backend.metrics import messages_received
 
 from google.protobuf.message import DecodeError
-from meshtastic_protos import mqtt_pb2
+from backend.meshtastic_protos import mqtt_pb2, config_pb2
 from google.protobuf.json_format import MessageToDict
 
 # Carica le variabili da .env

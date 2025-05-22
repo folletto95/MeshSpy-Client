@@ -1,37 +1,9 @@
 import logging
-from db_utils import update_node_info, save_packet_to_db
-from meshtastic_utils import print_node_info
+from db_utils import save_packet
 
+def on_receive(packet):
+    logging.info(f"Pacchetto ricevuto: {packet}")
+    save_packet(packet)
 
-def on_connection(interface, **kwargs):
-    """
-    Callback chiamato alla connessione con il nodo Meshtastic.
-    """
-    logging.info("Connesso al nodo Meshtastic")
-    print_node_info(interface)
-
-    try:
-        info = interface.myInfo
-        if info:
-            update_node_info(
-                node_num=info.my_node_num,
-                long_name=interface.localNode.getLongName(),
-                short_name=interface.localNode.getShortName(),
-                hw_model=interface.localNode.hwModel,
-            )
-        else:
-            logging.warning("Info nodo non disponibile (myInfo is None)")
-    except Exception as e:
-        logging.error(f"Errore durante l'elaborazione della connessione: {e}")
-
-
-def on_receive(packet, interface, **kwargs):
-    """
-    Callback chiamato alla ricezione di un pacchetto.
-    """
-    try:
-        logging.info("=== Ricevuto pacchetto ===")
-        logging.info(packet)
-        save_packet(packet)
-    except Exception as e:
-        logging.error(f"Errore durante la gestione del pacchetto: {e}")
+def on_connection(interface):
+    logging.info("Connessione stabilita con l'interfaccia Meshtastic.")

@@ -5,7 +5,7 @@ from typing import Optional
 import paho.mqtt.client as mqtt
 from google.protobuf.json_format import MessageToDict
 from backend.services import protodecod
-from backend.services.db import NodeDatabase
+#from backend.services.db import NodeDatabase
 from backend.services.state import GlobalState
 from backend.services.log_stream import log_stream_manager
 

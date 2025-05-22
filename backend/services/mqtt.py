@@ -131,9 +131,10 @@ class MQTTService:
 
     async def _handle_message(self, topic, payload):
         node_id = None
+        message = None
         try:
             decoded = payload.decode("utf-8")
-            logger.info("📩 Payload ricevuto (UTF-8): %s", decoded)
+            logger.debug("📩 Payload ricevuto (UTF-8): %s", decoded)
             message = json.loads(decoded)
             messages_received.inc()
             node_id = str(message.get("from"))
@@ -142,20 +143,24 @@ class MQTTService:
             try:
                 envelope = mqtt_pb2.ServiceEnvelope()
                 envelope.ParseFromString(payload)
-                if envelope.packet.decoded.id:
-                    node_id = str(envelope.packet.decoded.id)
-                logger.info("📩 Messaggio Protobuf ricevuto da %s", node_id)
-                return
+                if envelope.packet and envelope.packet.HasField("decoded"):
+                    if hasattr(envelope.packet.decoded, "id"):
+                        node_id = str(envelope.packet.decoded.id)
+                        logger.info("📩 Messaggio Protobuf ricevuto da %s", node_id)
+                    else:
+                        logger.warning("⚠️ Nessun campo 'id' trovato in decoded.packet")
+                else:
+                    logger.warning("⚠️ Protobuf valido ma non contiene packet/decoded")
+                return  # Finisce qui, decodifica Protobuf fatta
             except DecodeError as pe:
                 logger.warning("❌ Payload non riconosciuto come protobuf: %s", pe)
                 return
         except json.JSONDecodeError as e:
             logger.warning("Errore decoding JSON del messaggio su %s: %s", topic, e)
-            logger.warning("📄 Payload UTF-8: %s", decoded)
             return
 
         if not node_id:
-            logger.warning("Messaggio senza campo 'from': %s", message)
+            logger.warning("⚠️ Messaggio senza campo 'from': %s", message)
             return
 
         if node_id == self.my_node_id:

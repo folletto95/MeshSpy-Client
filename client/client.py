@@ -14,7 +14,8 @@ from pubsub import pub
 from flask import Flask
 from rest_api import start_web_server
 from db_utils import update_node_info, save_packet, init_db
-from receive import setup_receive  # Nuovo modulo separato
+from pubsub import pub
+from receive import setup_receive, on_connection
 
 DB_FILE = "packets.db"
 app = Flask(__name__)

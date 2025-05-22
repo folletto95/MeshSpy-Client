@@ -1,4 +1,5 @@
 import logging
+from pubsub import pub
 from db_utils import update_node_info
 from meshtastic_utils import print_node_info
 

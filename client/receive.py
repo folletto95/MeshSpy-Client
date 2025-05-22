@@ -1,7 +1,7 @@
 import logging
-from pubsub import pub
-from db_utils import update_node_info
+from db_utils import update_node_info, save_packet
 from meshtastic_utils import print_node_info
+
 
 def on_connection(interface, **kwargs):
     """
@@ -23,3 +23,15 @@ def on_connection(interface, **kwargs):
             logging.warning("Info nodo non disponibile (myInfo is None)")
     except Exception as e:
         logging.error(f"Errore durante l'elaborazione della connessione: {e}")
+
+
+def on_receive(packet, interface, **kwargs):
+    """
+    Callback chiamato alla ricezione di un pacchetto.
+    """
+    try:
+        logging.info("=== Ricevuto pacchetto ===")
+        logging.info(packet)
+        save_packet(packet)
+    except Exception as e:
+        logging.error(f"Errore durante la gestione del pacchetto: {e}")

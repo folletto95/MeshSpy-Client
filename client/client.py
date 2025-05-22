@@ -65,7 +65,14 @@ def on_receive(packet, interface, server_url):
 def on_connection(interface, topic=pub.AUTO_TOPIC):
     logging.info("Connesso al nodo Meshtastic")
     try:
+        interface.showInfo()
+    except Exception as e:
+        logging.warning(f"[on_connection] Errore showInfo(): {e}")
+    try:
         info = getattr(interface, "myInfo", None)
+        logging.info(f"[DEBUG] myInfo: {info}")
+        logging.info(f"[DEBUG] iface.nodes: {interface.nodes}")
+        logging.info(f"[DEBUG] iface.localNode: {interface.localNode}")
         if not info:
             logging.warning("Info nodo non disponibile (myInfo is None)")
             return
@@ -130,6 +137,7 @@ def main():
 
     pub.subscribe(lambda p, i: on_receive(p, i, args.server_url), "meshtastic.receive")
     pub.subscribe(on_connection, "meshtastic.connection.established")
+    logging.info("[DEBUG] Subscrizione a 'meshtastic.receive' completata")
 
     devPath = args.port
     if args.port is None or args.port == "auto":

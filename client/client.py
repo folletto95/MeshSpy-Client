@@ -14,6 +14,13 @@ from pubsub import pub
 from flask import Flask, jsonify
 from db_utils import update_node_info, save_packet, init_db
 
+from receive import setup_receive
+
+
+setup_receive(iface, args.server_url)
+
+
+
 DB_FILE = "packets.db"
 app = Flask(__name__)
 

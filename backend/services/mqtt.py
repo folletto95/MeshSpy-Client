@@ -16,8 +16,9 @@ from backend.services.db import (
     get_db_path,
     load_nodes_as_dict,
 )
+
 from backend.services.message_handler import insert_or_update_node_from_message
-from backend.state import AppState
+from backend.services.state import AppState
 from backend.metrics import messages_received
 
 from google.protobuf.message import DecodeError

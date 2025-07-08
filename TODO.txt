@@ -1,0 +1,21 @@
+testare l'invio e ricezione di messaggi dal client verso mqtt e altri nodi della mesh.
+
+Controllare la lettura dei nodi e fare lo strore dei nodi su db.
+
+Verificare l'estrazione dei dati corretti dei vari nodi dalla scheda.
+
+Web ui ancora non funzionante, 127.0.0.1:8080 non funzionante
+
+Nella web ui devono essere visualizzati i nodi in una lista e fatti vedere i dati salvati.
+
+La web ui deve ricevere e mandare messaggi sui canali che vedi nel node info e ai singoli nodi come messaggio diretto
+
+La web ui si deve avviare da sola all'avvio del docker 
+
+Dobbiamo sviluppare l'api per parlare in mqtt col server 
+
+Va sviluppato il server di gestione stile Ubiquity Unifi
+
+Inserire riconnessioni e retry su tutte le azioni da fare nel nodo
+
+strutturare e decodificare i dati ricevuti dalla mesh.

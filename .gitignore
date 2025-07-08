@@ -42,3 +42,8 @@ frontend_files/
 
 # Windows cacca
 Thumbs.db
+
+# Added by MeshSpy-Client import
+log.txt
+nodes.db
+

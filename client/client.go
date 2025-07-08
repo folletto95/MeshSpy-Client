@@ -179,7 +179,8 @@ func ConnectMQTT(cfg config.Config) (mqtt.Client, error) {
 		SetAutoReconnect(true).
 		SetConnectRetry(true).
 		SetConnectRetryInterval(5 * time.Second).
-		SetResumeSubs(true)
+		SetResumeSubs(true).
+		SetConnectTimeout(10 * time.Second)
 
 	if cfg.User != "" {
 		opts.SetUsername(cfg.User)
@@ -195,7 +196,9 @@ func ConnectMQTT(cfg config.Config) (mqtt.Client, error) {
 
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
-	token.Wait()
+	if !token.WaitTimeout(10 * time.Second) {
+		return nil, fmt.Errorf("MQTT connection timed out")
+	}
 	return client, token.Error()
 }
 
@@ -250,7 +253,9 @@ func GetLocalNodeInfoCached(port, path string) (*NodeInfo, error) {
 // PublishAlive sends a simple \"MeshSpy Alive\" message to the given topic.
 func PublishAlive(client mqtt.Client, topic string) error {
 	token := client.Publish(topic, 0, false, []byte("MeshSpy Alive"))
-	token.Wait()
+	if !token.WaitTimeout(5 * time.Second) {
+		return fmt.Errorf("alive publish timed out")
+	}
 	return token.Error()
 }
 

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MeshSpy Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #1a202c;
+  color: #e2e8f0;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  grid-template-rows: 1fr 220px;
+  grid-template-areas:
+    "sidebar main"
+    "messages messages";
+}
+
+#sidebar {
+  grid-area: sidebar;
+  padding: 10px;
+  background: #2d3748;
+  overflow-y: auto;
+}
+
+#main {
+  grid-area: main;
+  position: relative;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+#messages {
+  grid-area: messages;
+  padding: 10px;
+  background: #2d3748;
+  display: flex;
+  flex-direction: column;
+  height: 220px;
+}
+
+#log {
+  flex: 1;
+  overflow-y: auto;
+}
+
+#messages div {
+  margin-bottom: 4px;
+}
+
+form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+input[type="text"] {
+  flex: 1;
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+button {
+  background: #4299e1;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #3182ce;
+}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h2>Nodes</h2>
+  <ul id="nodes"></ul>
+</div>
+<div id="main">
+  <div id="map"></div>
+</div>
+<div id="messages">
+  <div id="log"></div>
+  <form id="form">
+    <input id="text" autocomplete="off" placeholder="Type a message" />
+    <button type="submit">Send</button>
+    <button id="defaultButton" type="button">Default</button>
+  </form>
+</div>
+<script>
+const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+ws.onopen = () => console.log("WebSocket connection opened");
+ws.onerror = (ev) => console.error("WebSocket error", ev);
+ws.onclose = () => console.log("WebSocket connection closed");
+ws.onmessage = (ev) => {
+  console.log("WebSocket message", ev.data);
+  const msgEl = document.createElement("div");
+  msgEl.textContent = ev.data;
+  document.getElementById("log").appendChild(msgEl);
+};
+
+document.getElementById("form").onsubmit = (ev) => {
+  ev.preventDefault();
+  const text = document.getElementById("text");
+  console.log("Sending message", text.value);
+  ws.send(text.value);
+  const echo = document.createElement("div");
+  echo.textContent = "You: " + text.value;
+  document.getElementById("log").appendChild(echo);
+  text.value = "";
+};
+
+document.getElementById("defaultButton").onclick = () => {
+  console.log("Sending default message");
+  ws.send("Hello from web");
+  const echo = document.createElement("div");
+  echo.textContent = "You: Hello from web";
+  document.getElementById("log").appendChild(echo);
+};
+
+fetch("/nodes").then(r => r.json()).then(nodes => {
+  const list = document.getElementById("nodes");
+  nodes.forEach(n => {
+    const li = document.createElement("li");
+    const name = n.LongName || n.ID;
+    li.textContent = `${name} [${n.ShortName}] id:${n.ID} battery:${n.BatteryLevel}%`;
+    list.appendChild(li);
+  });
+});
+
+fetch("/positions").then(r => r.json()).then(pos => {
+  const map = L.map('map').setView([0,0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+  const byNode = {};
+  pos.forEach(p => {
+    const arr = byNode[p.NodeID] || [];
+    arr.push([p.Latitude, p.Longitude]);
+    byNode[p.NodeID] = arr;
+  });
+  Object.keys(byNode).forEach(id => {
+    const coords = byNode[id];
+    L.polyline(coords, {color: 'blue'}).addTo(map);
+    const last = coords[coords.length-1];
+    if (last) {
+      L.marker(last).addTo(map).bindPopup(id);
+    }
+  });
+});
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</body>
+</html>

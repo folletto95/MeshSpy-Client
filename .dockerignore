@@ -1,0 +1,4 @@
+.git
+ghdownloader/*.go
+*.so
+.env.build

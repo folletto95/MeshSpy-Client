@@ -85,13 +85,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # 🛠️ ENV: Runtime config
 ###########################
 
-# Copy the .env.runtime file into the container (if present)
-RUN echo "copio .env.runtime"
-COPY .env.runtime /app/.env.runtime
-RUN echo "copiato .env.runtime"
-RUN echo "copio .env.example"
-COPY .env.example /app/.env.example
-RUN echo "copiato .env.example"
+# Include default runtime configuration
+COPY .env.runtime.example /app/.env.runtime
 
 # Start the main service
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

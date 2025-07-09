@@ -79,3 +79,60 @@ func TestSendAlert(t *testing.T) {
 		t.Fatalf("bad body %s", got)
 	}
 }
+
+func TestRegisterAndListNodeRequests(t *testing.T) {
+	var receivedPath string
+	var method string
+	var body string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		method = r.Method
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `[{"id":"1"}]`)
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	req := &NodeRequest{ID: "1", Name: "n", Address: "a"}
+	if err := c.RegisterNode(req); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if receivedPath != "/node-requests" || method != http.MethodPost {
+		t.Fatalf("bad request %s %s", method, receivedPath)
+	}
+	if !strings.Contains(body, "\"id\":\"1\"") {
+		t.Fatalf("bad body %s", body)
+	}
+
+	// test list
+	list, err := c.ListNodeRequests()
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != "1" {
+		t.Fatalf("unexpected list %+v", list)
+	}
+}
+
+func TestApproveRejectNodeRequest(t *testing.T) {
+	var paths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	if err := c.ApproveNodeRequest("x"); err != nil {
+		t.Fatalf("approve: %v", err)
+	}
+	if err := c.RejectNodeRequest("y"); err != nil {
+		t.Fatalf("reject: %v", err)
+	}
+	if len(paths) != 2 || paths[0] != "POST /node-requests/x/approve" || paths[1] != "DELETE /node-requests/y" {
+		t.Fatalf("unexpected paths %v", paths)
+	}
+}

@@ -22,6 +22,15 @@ type Client struct {
 	http    *http.Client
 }
 
+// NodeRequest represents a node registration request payload.
+type NodeRequest struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
+	Latitude  float64 `json:"latitude,omitempty"`
+	Longitude float64 `json:"longitude,omitempty"`
+}
+
 // New returns a new API client for the given base URL. If url is empty,
 // the returned client will be nil.
 func New(url string) *Client {
@@ -128,6 +137,93 @@ func (c *Client) ListNodes() ([]*mqttpkg.NodeInfo, error) {
 		})
 	}
 	return nodes, nil
+}
+
+// RegisterNode sends a node registration request to the server.
+func (c *Client) RegisterNode(req *NodeRequest) error {
+	if c == nil || req == nil {
+		return nil
+	}
+	b, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	httpReq, err := http.NewRequest(http.MethodPost, c.baseURL+"/node-requests", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("server returned %s", resp.Status)
+	}
+	return nil
+}
+
+// ListNodeRequests retrieves pending node registration requests.
+func (c *Client) ListNodeRequests() ([]NodeRequest, error) {
+	if c == nil {
+		return nil, nil
+	}
+	resp, err := c.http.Get(c.baseURL + "/node-requests")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("server returned %s", resp.Status)
+	}
+	var list []NodeRequest
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// ApproveNodeRequest approves a pending node request by ID.
+func (c *Client) ApproveNodeRequest(id string) error {
+	if c == nil || id == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/node-requests/%s/approve", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("server returned %s", resp.Status)
+	}
+	return nil
+}
+
+// RejectNodeRequest rejects a pending node request by ID.
+func (c *Client) RejectNodeRequest(id string) error {
+	if c == nil || id == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/node-requests/%s", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("server returned %s", resp.Status)
+	}
+	return nil
 }
 
 // ListPositions retrieves node positions from the server.

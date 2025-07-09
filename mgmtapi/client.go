@@ -36,14 +36,25 @@ func New(url string) *Client {
 
 // SendNode uploads a NodeInfo to the management server.
 func (c *Client) SendNode(info *mqttpkg.NodeInfo) error {
-	if c == nil {
+	if c == nil || info == nil {
 		return nil
 	}
-	b, err := json.Marshal(info)
+	// MeshSpy-Server expects a simplified Node payload
+	data := struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	}{
+		ID:      info.ID,
+		Name:    info.LongName,
+		Address: info.ShortName,
+	}
+	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/nodes", bytes.NewReader(b))
+	// The Java server exposes the node endpoint at /nodes
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/nodes", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -92,7 +103,7 @@ func (c *Client) ListNodes() ([]*mqttpkg.NodeInfo, error) {
 	if c == nil {
 		return nil, nil
 	}
-	resp, err := c.http.Get(c.baseURL + "/api/nodes")
+	resp, err := c.http.Get(c.baseURL + "/nodes")
 	if err != nil {
 		return nil, err
 	}
@@ -100,9 +111,21 @@ func (c *Client) ListNodes() ([]*mqttpkg.NodeInfo, error) {
 	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("server returned %s", resp.Status)
 	}
-	var nodes []*mqttpkg.NodeInfo
-	if err := json.NewDecoder(resp.Body).Decode(&nodes); err != nil {
+	var raw []struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, err
+	}
+	nodes := make([]*mqttpkg.NodeInfo, 0, len(raw))
+	for _, n := range raw {
+		nodes = append(nodes, &mqttpkg.NodeInfo{
+			ID:        n.ID,
+			LongName:  n.Name,
+			ShortName: n.Address,
+		})
 	}
 	return nodes, nil
 }

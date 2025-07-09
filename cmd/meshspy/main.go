@@ -74,6 +74,15 @@ func main() {
 
 	// Load configuration from environment variables
 	cfg := config.Load()
+	// Try to use the node long name as MQTT client ID when available
+	if info, err := mqttpkg.GetLocalNodeInfoCached(cfg.SerialPort, "nodes.json"); err == nil {
+		if ln := strings.TrimSpace(info.LongName); ln != "" {
+			cfg.ClientID = ln
+		}
+	} else {
+		log.Printf("⚠️  impossibile ottenere long name nodo: %v", err)
+	}
+
 	nodes := nodemap.New()
 	mgmt := mgmtapi.New(cfg.MgmtURL)
 

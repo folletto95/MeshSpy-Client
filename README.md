@@ -173,6 +173,18 @@ go run ./cmd/messagesapp
 Visit `http://localhost:8080` and post messages through the form to see
 them listed on the page.
 
+## API
+
+The client interacts with the management server via HTTP. When the server is not
+reachable, MeshSpy retries the connection every five minutes until it
+succeeds. The API currently supports:
+
+- Node registration and listing
+- Telemetry upload
+- Waypoint upload
+- Admin payload forwarding
+- Alert messaging
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -176,14 +176,36 @@ them listed on the page.
 ## API
 
 The client interacts with the management server via HTTP. When the server is not
-reachable, MeshSpy retries the connection every five minutes until it
-succeeds. The API currently supports:
+reachable MeshSpy retries the connection every five minutes until it succeeds.
+The server exposes the following JSON endpoints, mirrored from the
+[MeshSpy-Server project](https://github.com/folletto95/MeshSpy-Server):
 
-- Node registration and listing
-- Telemetry upload
-- Waypoint upload
-- Admin payload forwarding
-- Alert messaging
+### Node endpoints
+
+* `GET /nodes` – list approved nodes
+* `GET /nodes/{id}` – retrieve a single node
+* `POST /nodes` – register a node and receive `201 Created` or `202 Accepted`
+* `POST /nodes/reset` – remove all nodes while keeping pending requests
+
+### Node management
+
+* `GET /nodes/{id}/backups` – list stored configuration backups
+* `POST /nodes/{id}/backup` – upload a new configuration backup
+* `POST /nodes/{id}/restore` – restore a configuration from provided data
+* `POST /nodes/{id}/firmware/update` – record a firmware update request
+* `GET /nodes/{id}/firmware` – latest known firmware version
+
+### Registration requests
+
+* `GET /node-requests` – list pending node registrations
+* `POST /node-requests` – create a new request including `model`, `firmware`,
+  `longName` and `shortName`
+* `POST /node-requests/{id}/approve` – approve a request
+* `DELETE /node-requests/{id}` – reject and delete a request
+
+Additional endpoints handle telemetry, waypoints, admin payloads and alerts:
+`POST /api/telemetry`, `POST /api/waypoints`, `POST /api/admin` and
+`POST /api/alerts`.
 
 ## License
 

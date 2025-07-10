@@ -211,17 +211,8 @@ func main() {
 		if err := nodeStore.Upsert(info); err != nil {
 			log.Printf("⚠️ aggiornamento db nodi: %v", err)
 		}
-		req := &mgmtapi.NodeRequest{
-			ID:        info.ID,
-			Name:      info.LongName,
-			Address:   info.ShortName,
-			Latitude:  info.Latitude,
-			Longitude: info.Longitude,
-		}
-		if err := mgmt.RegisterNode(req); err != nil {
-			log.Printf("⚠️ invio richiesta nodo al server: %v", err)
-		} else if err := mgmt.ApproveNodeRequest(req.ID); err != nil {
-			log.Printf("⚠️ approvazione nodo sul server: %v", err)
+		if err := mgmt.SendNode(info); err != nil {
+			log.Printf("⚠️ invio nodo al server: %v", err)
 		}
 		if nodesList, err := mqttpkg.GetMeshNodes(cfg.SerialPort); err == nil {
 			for _, n := range nodesList {
@@ -229,17 +220,8 @@ func main() {
 				if err := nodeStore.Upsert(n); err != nil {
 					log.Printf("⚠️ aggiornamento db nodi: %v", err)
 				}
-				nreq := &mgmtapi.NodeRequest{
-					ID:        n.ID,
-					Name:      n.LongName,
-					Address:   n.ShortName,
-					Latitude:  n.Latitude,
-					Longitude: n.Longitude,
-				}
-				if err := mgmt.RegisterNode(nreq); err != nil {
-					log.Printf("⚠️ invio richiesta nodo al server: %v", err)
-				} else if err := mgmt.ApproveNodeRequest(nreq.ID); err != nil {
-					log.Printf("⚠️ approvazione nodo sul server: %v", err)
+				if err := mgmt.SendNode(n); err != nil {
+					log.Printf("⚠️ invio nodo al server: %v", err)
 				}
 			}
 		} else {
@@ -272,17 +254,8 @@ func main() {
 				if err := nodeStore.Upsert(info); err != nil {
 					log.Printf("⚠️ aggiornamento db nodi: %v", err)
 				}
-				req := &mgmtapi.NodeRequest{
-					ID:        info.ID,
-					Name:      info.LongName,
-					Address:   info.ShortName,
-					Latitude:  info.Latitude,
-					Longitude: info.Longitude,
-				}
-				if err := mgmt.RegisterNode(req); err != nil {
-					log.Printf("⚠️ invio richiesta nodo al server: %v", err)
-				} else if err := mgmt.ApproveNodeRequest(req.ID); err != nil {
-					log.Printf("⚠️ approvazione nodo sul server: %v", err)
+				if err := mgmt.SendNode(info); err != nil {
+					log.Printf("⚠️ invio nodo al server: %v", err)
 				}
 			}
 		}, func(mi *latestpb.MyNodeInfo) {
@@ -291,30 +264,36 @@ func main() {
 				if err := nodeStore.Upsert(info); err != nil {
 					log.Printf("⚠️ aggiornamento db nodi: %v", err)
 				}
-				req := &mgmtapi.NodeRequest{
-					ID:        info.ID,
-					Name:      info.LongName,
-					Address:   info.ShortName,
-					Latitude:  info.Latitude,
-					Longitude: info.Longitude,
-				}
-				if err := mgmt.RegisterNode(req); err != nil {
-					log.Printf("⚠️ invio richiesta nodo al server: %v", err)
-				} else if err := mgmt.ApproveNodeRequest(req.ID); err != nil {
-					log.Printf("⚠️ approvazione nodo sul server: %v", err)
+				if err := mgmt.SendNode(info); err != nil {
+					log.Printf("⚠️ invio nodo al server: %v", err)
 				}
 			}
 		}, func(tm *latestpb.Telemetry) {
 			b, _ := json.Marshal(tm)
 			log.Printf("📊 Telemetry: %s", string(b))
+			if err := nodeStore.AddTelemetry(tm); err != nil {
+				log.Printf("⚠️ salvataggio telemetry: %v", err)
+			}
+			if err := mgmt.SendTelemetry(tm); err != nil {
+				log.Printf("⚠️ invio telemetry al server: %v", err)
+			}
 		}, func(wp *latestpb.Waypoint) {
 			if err := nodeStore.AddWaypoint(wp); err != nil {
 				log.Printf("⚠️ salvataggio waypoint: %v", err)
 			}
+			if err := mgmt.SendWaypoint(wp); err != nil {
+				log.Printf("⚠️ invio waypoint al server: %v", err)
+			}
 		}, func(adm []byte) {
 			log.Printf("⚙️ Admin: %x", adm)
+			if err := mgmt.SendAdmin(adm); err != nil {
+				log.Printf("⚠️ invio admin al server: %v", err)
+			}
 		}, func(alert string) {
 			log.Printf("🚨 Alert: %s", alert)
+			if err := mgmt.SendAlert(alert); err != nil {
+				log.Printf("⚠️ invio alert al server: %v", err)
+			}
 		}, func(txt string) {
 			log.Printf("💬 Text: %s", txt)
 		}, func(data string) {

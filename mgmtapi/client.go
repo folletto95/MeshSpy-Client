@@ -18,8 +18,9 @@ import (
 
 // Client communicates with the management server HTTP API.
 type Client struct {
-	baseURL string
-	http    *http.Client
+	baseURL   string
+	http      *http.Client
+	connected bool
 }
 
 // NodeRequest represents a node registration request payload.
@@ -37,10 +38,53 @@ func New(url string) *Client {
 	if url == "" {
 		return nil
 	}
-	return &Client{
-		baseURL: strings.TrimRight(url, "/"),
-		http:    &http.Client{Timeout: 5 * time.Second},
+	c := &Client{
+		baseURL:   strings.TrimRight(url, "/"),
+		http:      &http.Client{Timeout: 5 * time.Second},
+		connected: true,
 	}
+	go c.retryLoop()
+	return c
+}
+
+func (c *Client) ping() error {
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/nodes", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+func (c *Client) retryLoop() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		if c.connected {
+			continue
+		}
+		if err := c.ping(); err == nil {
+			c.connected = true
+		}
+	}
+}
+
+func (c *Client) do(req *http.Request) (*http.Response, error) {
+	resp, err := c.http.Do(req)
+	if err != nil {
+		c.connected = false
+		return nil, err
+	}
+	if resp.StatusCode >= 300 {
+		c.connected = false
+		return resp, fmt.Errorf("server returned %s", resp.Status)
+	}
+	c.connected = true
+	return resp, nil
 }
 
 // SendNode uploads a NodeInfo to the management server.
@@ -68,14 +112,11 @@ func (c *Client) SendNode(info *mqttpkg.NodeInfo) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -96,14 +137,11 @@ func (c *Client) SendCommand(cmd string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -112,14 +150,15 @@ func (c *Client) ListNodes() ([]*mqttpkg.NodeInfo, error) {
 	if c == nil {
 		return nil, nil
 	}
-	resp, err := c.http.Get(c.baseURL + "/nodes")
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/nodes", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("server returned %s", resp.Status)
-	}
 	var raw []struct {
 		ID      string `json:"id"`
 		Name    string `json:"name"`
@@ -153,14 +192,11 @@ func (c *Client) RegisterNode(req *NodeRequest) error {
 		return err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(httpReq)
+	resp, err := c.do(httpReq)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -169,14 +205,15 @@ func (c *Client) ListNodeRequests() ([]NodeRequest, error) {
 	if c == nil {
 		return nil, nil
 	}
-	resp, err := c.http.Get(c.baseURL + "/node-requests")
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/node-requests", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("server returned %s", resp.Status)
-	}
 	var list []NodeRequest
 	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
 		return nil, err
@@ -194,14 +231,11 @@ func (c *Client) ApproveNodeRequest(id string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -215,14 +249,11 @@ func (c *Client) RejectNodeRequest(id string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -235,14 +266,15 @@ func (c *Client) ListPositions(nodeID string) ([]storage.NodePosition, error) {
 	if nodeID != "" {
 		url += "?node=" + nodeID
 	}
-	resp, err := c.http.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("server returned %s", resp.Status)
-	}
 	var pos []storage.NodePosition
 	if err := json.NewDecoder(resp.Body).Decode(&pos); err != nil {
 		return nil, err
@@ -264,14 +296,11 @@ func (c *Client) SendTelemetry(t *latestpb.Telemetry) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -289,14 +318,11 @@ func (c *Client) SendWaypoint(wp *latestpb.Waypoint) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -317,14 +343,11 @@ func (c *Client) SendAdmin(payload []byte) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }
 
@@ -345,13 +368,10 @@ func (c *Client) SendAlert(text string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("server returned %s", resp.Status)
-	}
 	return nil
 }

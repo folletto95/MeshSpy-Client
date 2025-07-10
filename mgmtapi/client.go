@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -30,6 +31,10 @@ type NodeRequest struct {
 	Address   string  `json:"address"`
 	Latitude  float64 `json:"latitude,omitempty"`
 	Longitude float64 `json:"longitude,omitempty"`
+	Model     string  `json:"model,omitempty"`
+	Firmware  string  `json:"firmware,omitempty"`
+	LongName  string  `json:"longName,omitempty"`
+	ShortName string  `json:"shortName,omitempty"`
 }
 
 // New returns a new API client for the given base URL. If url is empty,
@@ -374,4 +379,128 @@ func (c *Client) SendAlert(text string) error {
 	}
 	defer resp.Body.Close()
 	return nil
+}
+
+// ListBackups fetches stored configuration backups for the node.
+func (c *Client) ListBackups(id string) ([]string, error) {
+	if c == nil || id == "" {
+		return nil, nil
+	}
+	url := fmt.Sprintf("%s/nodes/%s/backups", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var list []string
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// AddBackup uploads a new configuration backup for the node.
+func (c *Client) AddBackup(id, data string) error {
+	if c == nil || id == "" || data == "" {
+		return nil
+	}
+	payload := struct {
+		Data string `json:"data"`
+	}{Data: data}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/nodes/%s/backup", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// RestoreBackup uploads configuration data to restore the node.
+func (c *Client) RestoreBackup(id, data string) error {
+	if c == nil || id == "" || data == "" {
+		return nil
+	}
+	payload := struct {
+		Data string `json:"data"`
+	}{Data: data}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/nodes/%s/restore", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// UpdateFirmware records a firmware update request for the node.
+func (c *Client) UpdateFirmware(id, version, urlStr string, build bool) error {
+	if c == nil || id == "" {
+		return nil
+	}
+	payload := struct {
+		Version string `json:"version,omitempty"`
+		URL     string `json:"url,omitempty"`
+		Build   bool   `json:"build,omitempty"`
+	}{Version: version, URL: urlStr, Build: build}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/nodes/%s/firmware/update", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// GetFirmware retrieves the latest known firmware version for the node.
+func (c *Client) GetFirmware(id string) (string, error) {
+	if c == nil || id == "" {
+		return "", nil
+	}
+	url := fmt.Sprintf("%s/nodes/%s/firmware", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes.TrimSpace(b)), nil
 }

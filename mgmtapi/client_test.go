@@ -97,7 +97,7 @@ func TestRegisterAndListNodeRequests(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL)
-	req := &NodeRequest{ID: "1", Name: "n", Address: "a"}
+	req := &NodeRequest{ID: "1", Name: "n", Address: "a", Model: "m"}
 	if err := c.RegisterNode(req); err != nil {
 		t.Fatalf("register: %v", err)
 	}
@@ -134,5 +134,53 @@ func TestApproveRejectNodeRequest(t *testing.T) {
 	}
 	if len(paths) != 2 || paths[0] != "POST /node-requests/x/approve" || paths[1] != "DELETE /node-requests/y" {
 		t.Fatalf("unexpected paths %v", paths)
+	}
+}
+func TestNodeManagement(t *testing.T) {
+	var paths []string
+	var bodies []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(b))
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `["one","two"]`)
+		}
+	}))
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := c.ListBackups("n1"); err != nil {
+		t.Fatalf("list backups: %v", err)
+	}
+	if err := c.AddBackup("n1", "cfg"); err != nil {
+		t.Fatalf("add backup: %v", err)
+	}
+	if err := c.RestoreBackup("n1", "cfg"); err != nil {
+		t.Fatalf("restore backup: %v", err)
+	}
+	if err := c.UpdateFirmware("n1", "v1", "", false); err != nil {
+		t.Fatalf("firmware: %v", err)
+	}
+	if _, err := c.GetFirmware("n1"); err != nil {
+		t.Fatalf("get firmware: %v", err)
+	}
+	expected := []string{
+		"GET /nodes/n1/backups",
+		"POST /nodes/n1/backup",
+		"POST /nodes/n1/restore",
+		"POST /nodes/n1/firmware/update",
+		"GET /nodes/n1/firmware",
+	}
+	if len(paths) != len(expected) {
+		t.Fatalf("paths %v", paths)
+	}
+	for i, p := range expected {
+		if paths[i] != p {
+			t.Fatalf("got %s want %s", paths[i], p)
+		}
+	}
+	if !strings.Contains(bodies[1], "cfg") || !strings.Contains(bodies[2], "cfg") {
+		t.Fatalf("bad bodies %v", bodies)
 	}
 }

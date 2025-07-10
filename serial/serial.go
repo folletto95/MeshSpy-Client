@@ -35,18 +35,19 @@ func ReadLoop(portName string, baud int, debug bool, protoVersion string, nm *no
 		port serial.Port
 		err  error
 	)
-	for i := 0; i < 5; i++ {
+	const maxAttempts = 12
+	for i := 0; i < maxAttempts; i++ {
 		port, err = serial.Open(portName, &serial.Mode{BaudRate: baud})
 		if err == nil {
 			port.SetReadTimeout(5 * time.Second)
 			break
 		}
-		log.Printf("Failed to open serial port %s: %v (attempt %d/5)", portName, err, i+1)
-		time.Sleep(time.Second)
+		log.Printf("Failed to open serial port %s: %v (attempt %d/%d)", portName, err, i+1, maxAttempts)
+		time.Sleep(5 * time.Second)
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to open serial port %s after 5 attempts: %v", portName, err)
+		log.Fatalf("Failed to open serial port %s after %d attempts: %v", portName, maxAttempts, err)
 	}
 	defer port.Close()
 

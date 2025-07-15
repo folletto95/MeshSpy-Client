@@ -56,6 +56,7 @@ docker run -d \
   -e MQTT_TOPIC=meshspy \
   -e MQTT_CLIENT_ID=meshspy-berry5 \
   -e SEND_ALIVE_ON_START=true \
+  -e SEND_WELCOME_ON_START=true \
   -e NODE_DB_PATH=/app/data/nodes.db \
   $IMAGE_NAME
 

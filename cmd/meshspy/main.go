@@ -234,10 +234,12 @@ func main() {
 			log.Printf("✅ Configurazione salvata in %s", cfgFile)
 		}
 	}
-	if err := serial.SendTextMessage(cfg.SerialPort, welcomeMessage); err != nil {
-		log.Printf("⚠️ Errore invio messaggio di benvenuto: %v", err)
-	} else {
-		log.Printf("✅ Messaggio di benvenuto inviato")
+	if cfg.SendWelcome {
+		if err := serial.SendTextMessage(cfg.SerialPort, welcomeMessage); err != nil {
+			log.Printf("⚠️ Errore invio messaggio di benvenuto: %v", err)
+		} else {
+			log.Printf("✅ Messaggio di benvenuto inviato")
+		}
 	}
 
 	portMgr, err = serial.OpenManager(cfg.SerialPort, cfg.BaudRate, protoVer)

@@ -74,7 +74,9 @@ streaming data from the serial port to the configured MQTT topic. When the
 `SEND_ALIVE_ON_START` environment variable is set to `true`, the service also
 sends a `MeshSpy Alive` message on the configured MQTT topic and to the node
 itself using `meshtastic-go message send -m`, so other components can detect that
-the service is running and nodes are reached.
+the service is running and nodes are reached. Set `SEND_WELCOME_ON_START` to
+`false` if you do not want the service to send the default welcome text to the
+node when starting.
 
 The MQTT client automatically resumes subscriptions when the connection to the
 broker is restored.
@@ -96,6 +98,9 @@ additional settings from `.env.runtime` when present:
 - `SEND_ALIVE_ON_START=true`
   (set to `false` if you do **not** want the service to send and log a `MeshSpy Alive`
   message on start-up)
+- `SEND_WELCOME_ON_START=true`
+  (set to `false` to suppress the welcome text message sent to the node when the
+  service starts)
 - `NODE_DB_PATH=nodes.db`
   (location of the SQLite database that stores node information. When unset the
   file `nodes.db` is created in the working directory &ndash; `/app/nodes.db`
@@ -105,7 +110,8 @@ additional settings from `.env.runtime` when present:
   (when set, node information, telemetry and waypoints are forwarded to the
   management server running at this URL)
 
-The helper sets `SEND_ALIVE_ON_START` so the service announces itself when launched.
+The helper sets `SEND_ALIVE_ON_START` and `SEND_WELCOME_ON_START` so the service
+announces itself and sends a welcome message when launched.
 
 Start the container using the defaults:
 

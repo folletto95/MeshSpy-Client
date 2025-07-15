@@ -504,3 +504,46 @@ func (c *Client) GetFirmware(id string) (string, error) {
 	}
 	return string(bytes.TrimSpace(b)), nil
 }
+
+// GetNode retrieves a single node by ID from the server.
+func (c *Client) GetNode(id string) (*mqttpkg.NodeInfo, error) {
+	if c == nil || id == "" {
+		return nil, nil
+	}
+	url := fmt.Sprintf("%s/nodes/%s", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var n struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&n); err != nil {
+		return nil, err
+	}
+	return &mqttpkg.NodeInfo{ID: n.ID, LongName: n.Name, ShortName: n.Address}, nil
+}
+
+// ResetNodes removes all nodes from the server while keeping pending requests.
+func (c *Client) ResetNodes() error {
+	if c == nil {
+		return nil
+	}
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/nodes/reset", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}

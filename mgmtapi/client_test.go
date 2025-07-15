@@ -184,3 +184,36 @@ func TestNodeManagement(t *testing.T) {
 		t.Fatalf("bad bodies %v", bodies)
 	}
 }
+
+func TestGetNodeAndReset(t *testing.T) {
+	var paths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `{"id":"n1","name":"test","address":"aa"}`)
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	n, err := c.GetNode("n1")
+	if err != nil {
+		t.Fatalf("get node: %v", err)
+	}
+	if n.ID != "n1" || n.LongName != "test" || n.ShortName != "aa" {
+		t.Fatalf("unexpected node %+v", n)
+	}
+	if err := c.ResetNodes(); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	expected := []string{"GET /nodes/n1", "POST /nodes/reset"}
+	if len(paths) != len(expected) {
+		t.Fatalf("paths %v", paths)
+	}
+	for i, p := range expected {
+		if paths[i] != p {
+			t.Fatalf("got %s want %s", paths[i], p)
+		}
+	}
+}

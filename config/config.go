@@ -23,6 +23,7 @@ type Config struct {
 	Password     string
 	Debug        bool
 	SendAlive    bool
+	SendWelcome  bool
 	MgmtURL      string
 }
 
@@ -48,6 +49,13 @@ func Load() Config {
 		sendAlive = false
 	}
 
+	welcomeStr := getEnv("SEND_WELCOME_ON_START", "true")
+	sendWelcome, err := strconv.ParseBool(welcomeStr)
+	if err != nil {
+		log.Printf("invalid SEND_WELCOME_ON_START value %q, defaulting to true", welcomeStr)
+		sendWelcome = true
+	}
+
 	serialPort := getEnv("SERIAL_PORT", "/dev/ttyUSB0")
 	if !portExists(serialPort) {
 		log.Printf("⚠️  porta seriale %s non trovata, ricerca automatica", serialPort)
@@ -70,6 +78,7 @@ func Load() Config {
 		Password:     os.Getenv("MQTT_PASS"),
 		Debug:        debug,
 		SendAlive:    sendAlive,
+		SendWelcome:  sendWelcome,
 		MgmtURL:      os.Getenv("MGMT_SERVER_URL"),
 	}
 }

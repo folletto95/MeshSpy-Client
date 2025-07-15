@@ -187,6 +187,14 @@ The server exposes the following JSON endpoints, mirrored from the
 * `POST /nodes` – register a node and receive `201 Created` or `202 Accepted`
 * `POST /nodes/reset` – remove all nodes while keeping pending requests
 
+### Client endpoints
+
+Endpoints for local clients physically connected via USB:
+
+* `GET /clients` – list connected clients
+* `POST /clients` – register a new client using the same payload as `POST /nodes` with `"client": true`
+* `POST /clients/reset` – remove all stored clients
+
 ### Node management
 
 * `GET /nodes/{id}/backups` – list stored configuration backups

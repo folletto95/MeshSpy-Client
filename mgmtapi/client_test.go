@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	mqttpkg "meshspy/client"
 	latestpb "meshspy/proto/latest/meshtastic"
 )
 
@@ -215,5 +216,44 @@ func TestGetNodeAndReset(t *testing.T) {
 		if paths[i] != p {
 			t.Fatalf("got %s want %s", paths[i], p)
 		}
+	}
+}
+
+func TestClientEndpoints(t *testing.T) {
+	var paths []string
+	var bodies []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(b))
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `[{"id":"c1","name":"cli","address":"aa"}]`)
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	info := &mqttpkg.NodeInfo{ID: "c1", LongName: "cli", ShortName: "aa"}
+	if err := c.AddClient(info); err != nil {
+		t.Fatalf("add client: %v", err)
+	}
+	if _, err := c.ListClients(); err != nil {
+		t.Fatalf("list clients: %v", err)
+	}
+	if err := c.ResetClients(); err != nil {
+		t.Fatalf("reset clients: %v", err)
+	}
+	expected := []string{"POST /clients", "GET /clients", "POST /clients/reset"}
+	if len(paths) != len(expected) {
+		t.Fatalf("paths %v", paths)
+	}
+	for i, p := range expected {
+		if paths[i] != p {
+			t.Fatalf("got %s want %s", paths[i], p)
+		}
+	}
+	if !strings.Contains(bodies[0], "\"client\":true") {
+		t.Fatalf("missing client flag in %s", bodies[0])
 	}
 }

@@ -37,6 +37,17 @@ type NodeRequest struct {
 	ShortName string  `json:"shortName,omitempty"`
 }
 
+// NodePayload mirrors the Node structure on the management server.
+// It is used when registering nodes or local clients.
+type NodePayload struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
+	Latitude  float64 `json:"latitude,omitempty"`
+	Longitude float64 `json:"longitude,omitempty"`
+	Client    bool    `json:"client,omitempty"`
+}
+
 // New returns a new API client for the given base URL. If url is empty,
 // the returned client will be nil.
 func New(url string) *Client {
@@ -97,22 +108,45 @@ func (c *Client) SendNode(info *mqttpkg.NodeInfo) error {
 	if c == nil || info == nil {
 		return nil
 	}
-	// MeshSpy-Server expects a simplified Node payload
-	data := struct {
-		ID      string `json:"id"`
-		Name    string `json:"name"`
-		Address string `json:"address"`
-	}{
+	payload := NodePayload{
 		ID:      info.ID,
 		Name:    info.LongName,
 		Address: info.ShortName,
 	}
-	b, err := json.Marshal(data)
+	b, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	// The Java server exposes the node endpoint at /nodes
 	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/nodes", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// AddClient registers a local client with the management server.
+func (c *Client) AddClient(info *mqttpkg.NodeInfo) error {
+	if c == nil || info == nil {
+		return nil
+	}
+	payload := NodePayload{
+		ID:      info.ID,
+		Name:    info.LongName,
+		Address: info.ShortName,
+		Client:  true,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/clients", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -181,6 +215,52 @@ func (c *Client) ListNodes() ([]*mqttpkg.NodeInfo, error) {
 		})
 	}
 	return nodes, nil
+}
+
+// ListClients retrieves the registered local clients from the server.
+func (c *Client) ListClients() ([]*mqttpkg.NodeInfo, error) {
+	if c == nil {
+		return nil, nil
+	}
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/clients", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var raw []struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+	clients := make([]*mqttpkg.NodeInfo, 0, len(raw))
+	for _, n := range raw {
+		clients = append(clients, &mqttpkg.NodeInfo{ID: n.ID, LongName: n.Name, ShortName: n.Address})
+	}
+	return clients, nil
+}
+
+// ResetClients removes all stored clients from the server.
+func (c *Client) ResetClients() error {
+	if c == nil {
+		return nil
+	}
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/clients/reset", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
 }
 
 // RegisterNode sends a node registration request to the server.

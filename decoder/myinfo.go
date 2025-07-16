@@ -9,7 +9,9 @@ import (
 
 // DecodeMyInfo decodes a protobuf blob into a MyNodeInfo message.
 func DecodeMyInfo(data []byte, version string) (*latestpb.MyNodeInfo, error) {
-	if len(data) >= headerLen && data[0] == start1 && data[1] == start2 {
+	if len(data) >= headerLen &&
+		((data[0] == start1 && data[1] == start2) ||
+			(data[0] == start1v21 && data[1] == start2v21)) {
 		l := int(data[2])<<8 | int(data[3])
 		if len(data) >= headerLen+l {
 			data = data[headerLen : headerLen+l]
@@ -18,7 +20,7 @@ func DecodeMyInfo(data []byte, version string) (*latestpb.MyNodeInfo, error) {
 		}
 	}
 	switch version {
-	case "", "latest":
+	case "", "latest", "2.1":
 		var fr latestpb.FromRadio
 		if err := proto.Unmarshal(data, &fr); err == nil && fr.GetMyInfo() != nil {
 			return fr.GetMyInfo(), nil

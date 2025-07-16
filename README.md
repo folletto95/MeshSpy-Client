@@ -200,6 +200,12 @@ Endpoints for local clients physically connected via USB:
 * `GET /clients` – list connected clients
 * `POST /clients` – register a new client using the same payload as `POST /nodes` with `"client": true`
 * `POST /clients/reset` – remove all stored clients
+* `GET /client-requests` – list pending client registration requests
+* `POST /client-requests` – create a new client request
+* `POST /client-requests/{id}/approve` – approve a pending client
+* `DELETE /client-requests/{id}` – reject a client request
+* `POST /clients/{id}/data` – send arbitrary data from the client
+* `GET /clients/{id}/data` – list all received data for the client
 
 ### Node management
 

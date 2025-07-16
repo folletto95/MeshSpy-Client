@@ -267,6 +267,126 @@ func (c *Client) ResetClients() error {
 	return nil
 }
 
+// AddClientRequest sends a client registration request to the server.
+func (c *Client) AddClientRequest(req *NodeRequest) error {
+	if c == nil || req == nil {
+		return nil
+	}
+	b, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	httpReq, err := http.NewRequest(http.MethodPost, c.baseURL+"/client-requests", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := c.do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// ListClientRequests retrieves pending client registration requests.
+func (c *Client) ListClientRequests() ([]NodeRequest, error) {
+	if c == nil {
+		return nil, nil
+	}
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/client-requests", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var list []NodeRequest
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// ApproveClientRequest approves a pending client request by ID.
+func (c *Client) ApproveClientRequest(id string) error {
+	if c == nil || id == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/client-requests/%s/approve", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// RejectClientRequest rejects a pending client request by ID.
+func (c *Client) RejectClientRequest(id string) error {
+	if c == nil || id == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/client-requests/%s", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// SendClientData uploads generic data for a client to the server.
+func (c *Client) SendClientData(id, data string) error {
+	if c == nil || id == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/clients/%s/data", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "text/plain")
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// ListClientData retrieves stored data for a client from the server.
+func (c *Client) ListClientData(id string) ([]string, error) {
+	if c == nil || id == "" {
+		return nil, nil
+	}
+	url := fmt.Sprintf("%s/clients/%s/data", c.baseURL, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var list []string
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 // RegisterNode sends a node registration request to the server.
 func (c *Client) RegisterNode(req *NodeRequest) error {
 	if c == nil || req == nil {

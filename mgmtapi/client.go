@@ -175,7 +175,7 @@ func (c *Client) SendCommand(cmd string) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/send", bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/send", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -471,7 +471,7 @@ func (c *Client) ListPositions(nodeID string) ([]storage.NodePosition, error) {
 	if c == nil {
 		return nil, nil
 	}
-	url := c.baseURL + "/api/positions"
+	url := c.baseURL + "/positions"
 	if nodeID != "" {
 		url += "?node=" + nodeID
 	}
@@ -500,7 +500,7 @@ func (c *Client) SendTelemetry(t *latestpb.Telemetry) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/telemetry", bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/telemetry", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -522,7 +522,7 @@ func (c *Client) SendWaypoint(wp *latestpb.Waypoint) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/waypoints", bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/waypoints", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -547,7 +547,7 @@ func (c *Client) SendAdmin(payload []byte) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/admin", bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/admin", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -572,7 +572,7 @@ func (c *Client) SendAlert(text string) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/alerts", bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/alerts", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

@@ -257,3 +257,66 @@ func TestClientEndpoints(t *testing.T) {
 		t.Fatalf("missing client flag in %s", bodies[0])
 	}
 }
+
+func TestClientRequestAndData(t *testing.T) {
+	var paths []string
+	var bodies []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(b))
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/client-requests") {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `[{"id":"cr1"}]`)
+		}
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/data") {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `["d"]`)
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	req := &NodeRequest{ID: "cr1", Name: "cli"}
+	if err := c.AddClientRequest(req); err != nil {
+		t.Fatalf("add request: %v", err)
+	}
+	if _, err := c.ListClientRequests(); err != nil {
+		t.Fatalf("list requests: %v", err)
+	}
+	if err := c.ApproveClientRequest("cr1"); err != nil {
+		t.Fatalf("approve: %v", err)
+	}
+	if err := c.RejectClientRequest("cr2"); err != nil {
+		t.Fatalf("reject: %v", err)
+	}
+	if _, err := c.ListClientData("cr1"); err != nil {
+		t.Fatalf("list data: %v", err)
+	}
+	if err := c.SendClientData("cr1", "d"); err != nil {
+		t.Fatalf("send data: %v", err)
+	}
+
+	expected := []string{
+		"POST /client-requests",
+		"GET /client-requests",
+		"POST /client-requests/cr1/approve",
+		"DELETE /client-requests/cr2",
+		"GET /clients/cr1/data",
+		"POST /clients/cr1/data",
+	}
+	if len(paths) != len(expected) {
+		t.Fatalf("paths %v", paths)
+	}
+	for i, p := range expected {
+		if paths[i] != p {
+			t.Fatalf("got %s want %s", paths[i], p)
+		}
+	}
+	if !strings.Contains(bodies[0], "cr1") {
+		t.Fatalf("bad body %s", bodies[0])
+	}
+	if bodies[len(bodies)-1] != "d" {
+		t.Fatalf("bad data body %s", bodies[len(bodies)-1])
+	}
+}

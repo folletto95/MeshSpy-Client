@@ -23,7 +23,7 @@ func TestSendTelemetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL)
+	c := New(srv.URL + "/api")
 	tel := &latestpb.Telemetry{Time: 1}
 	if err := c.SendTelemetry(tel); err != nil {
 		t.Fatalf("send: %v", err)
@@ -39,7 +39,7 @@ func TestSendWaypoint(t *testing.T) {
 		path = r.URL.Path
 	}))
 	defer srv.Close()
-	c := New(srv.URL)
+	c := New(srv.URL + "/api")
 	wp := &latestpb.Waypoint{Name: "here"}
 	if err := c.SendWaypoint(wp); err != nil {
 		t.Fatalf("send: %v", err)

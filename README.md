@@ -106,9 +106,9 @@ additional settings from `.env.runtime` when present:
   file `nodes.db` is created in the working directory &ndash; `/app/nodes.db`
   inside the container. Set this to an absolute path such as
 `/app/data/nodes.db` to persist the database in a mounted host volume.)
-- `MGMT_SERVER_URL=http://localhost:8080`
-  (when set, node information, telemetry and waypoints are forwarded to the
-  management server running at this URL)
+ - `MGMT_SERVER_URL=http://localhost:8081/api`
+   (when set, node information, telemetry and waypoints are forwarded to the
+   management server running at this URL)
 
 The helper sets `SEND_ALIVE_ON_START` and `SEND_WELCOME_ON_START` so the service
 announces itself and sends a welcome message when launched.

@@ -17,6 +17,8 @@ import (
 )
 
 var upgrader = websocket.Upgrader{}
+// Version is set at build time using -ldflags "-X main.Version=x.y.z"
+var Version = "dev"
 
 func main() {
 	// Load environment variables from .env.runtime if present
@@ -24,7 +26,8 @@ func main() {
 		log.Printf("⚠️  Nessun file .env.runtime trovato o errore di caricamento: %v", err)
 	}
 
-	cfg := config.Load()
+        cfg := config.Load()
+        log.Printf("\xf0\x9f\x93\xa6 Webapp version: %s", Version)
 
 	client, err := mqttpkg.ConnectMQTT(cfg)
 	if err != nil {
@@ -60,16 +63,21 @@ func main() {
 		json.NewEncoder(w).Encode(nodes)
 	})
 
-	http.HandleFunc("/positions", func(w http.ResponseWriter, r *http.Request) {
-		nodeID := r.URL.Query().Get("node")
-		pos, err := nodeStore.Positions(nodeID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(pos)
-	})
+        http.HandleFunc("/positions", func(w http.ResponseWriter, r *http.Request) {
+                nodeID := r.URL.Query().Get("node")
+                pos, err := nodeStore.Positions(nodeID)
+                if err != nil {
+                        http.Error(w, err.Error(), http.StatusInternalServerError)
+                        return
+                }
+                w.Header().Set("Content-Type", "application/json")
+                json.NewEncoder(w).Encode(pos)
+        })
+
+        http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+                w.Header().Set("Content-Type", "text/plain")
+                w.Write([]byte(Version))
+        })
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)

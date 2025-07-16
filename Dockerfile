@@ -7,6 +7,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE:-golang:1.22-alpine} AS builder
 
+ARG MESHSPY_VERSION=dev
+
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
@@ -44,11 +46,11 @@ COPY . .
 
 # ✅ Build meshspy
 RUN GOARM=$(echo ${TARGETVARIANT} | tr -d 'v') \
-    go build -ldflags="-s -w" -o meshspy ./cmd/meshspy
+    go build -ldflags="-s -w -X main.Version=${MESHSPY_VERSION}" -o meshspy ./cmd/meshspy
 
 # ✅ Build webapp
 RUN GOARM=$(echo ${TARGETVARIANT} | tr -d 'v') \
-    go build -ldflags="-s -w" -o webapp ./cmd/webapp
+    go build -ldflags="-s -w -X main.Version=${MESHSPY_VERSION}" -o webapp ./cmd/webapp
 
 # ✅ Clone and build meshtastic-go
 RUN git clone https://github.com/lmatte7/meshtastic-go.git /tmp/meshtastic-go \

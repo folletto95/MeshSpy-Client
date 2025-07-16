@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -93,11 +94,14 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	resp, err := c.http.Do(req)
 	if err != nil {
 		c.connected = false
+		log.Printf("request to %s failed: %v", req.URL, err)
 		return nil, err
 	}
 	if resp.StatusCode >= 300 {
 		c.connected = false
-		return resp, fmt.Errorf("server returned %s", resp.Status)
+		err = fmt.Errorf("server returned %s", resp.Status)
+		log.Printf("request to %s failed: %v", req.URL, err)
+		return resp, err
 	}
 	c.connected = true
 	return resp, nil

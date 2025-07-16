@@ -85,6 +85,11 @@ func main() {
 
 	nodes := nodemap.New()
 	mgmt := mgmtapi.New(cfg.MgmtURL)
+	if mgmt == nil {
+		log.Println("ℹ️  MGMT_SERVER_URL vuoto, il server di gestione non sara` utilizzato")
+	} else {
+		log.Printf("ℹ️  uso server di gestione: %s", cfg.MgmtURL)
+	}
 
 	// Print MQTT credentials so they can be verified before connecting
 	log.Printf("ℹ️  MQTT user: %s", cfg.User)

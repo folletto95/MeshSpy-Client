@@ -79,7 +79,7 @@ func Load() Config {
 		Debug:        debug,
 		SendAlive:    sendAlive,
 		SendWelcome:  sendWelcome,
-		MgmtURL:      os.Getenv("MGMT_SERVER_URL"),
+		MgmtURL:      getEnv("MGMT_SERVER_URL", "http://192.168.10.98:8080"),
 	}
 }
 

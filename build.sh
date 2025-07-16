@@ -6,6 +6,24 @@ if [[ -f .env.build ]]; then
   source .env.build
 fi
 
+# ------------------------------------------------------------
+# Bump minor version on each build and export MESHSPY_VERSION
+# ------------------------------------------------------------
+VERSION_FILE="VERSION"
+if [[ -f "$VERSION_FILE" ]]; then
+  VER=$(cat "$VERSION_FILE")
+else
+  VER="0.0.0"
+fi
+IFS='.' read -r MAJOR MINOR PATCH_VER <<<"$VER"
+MINOR=$((MINOR + 1))
+NEW_VERSION="${MAJOR}.${MINOR}.${PATCH_VER}"
+echo "$NEW_VERSION" > "$VERSION_FILE"
+export MESHSPY_VERSION="$NEW_VERSION"
+
+# Default TAG to the incremented version when not provided
+TAG="${TAG:-$NEW_VERSION}"
+
 # Automatic login if configured
 if [[ -n "${DOCKER_USERNAME:-}" && -n "${DOCKER_PASSWORD:-}" ]]; then
   echo "$DOCKER_PASSWORD" | docker login docker.io \
@@ -16,7 +34,6 @@ fi
 
 # Parameters
 IMAGE="${IMAGE:-nicbad/meshspy}"
-TAG="${TAG:-latest}"
 
 # Separate architectures
 ARCH_ARMV6="linux/arm/v6"
@@ -118,6 +135,7 @@ if [[ -n "$BUILD_PLATFORMS" ]]; then
     --push \
     -t "${IMAGE}:${TAG}" \
     --build-arg BASE_IMAGE="$BASE" \
+    --build-arg MESHSPY_VERSION="$MESHSPY_VERSION" \
     .
   echo "✅ Done! Image ready: ${IMAGE}:${TAG}"
   exit 0
@@ -132,6 +150,7 @@ docker buildx build \
   --build-arg GOARCH=arm \
   --build-arg GOARM=6 \
   --build-arg BASE_IMAGE=arm32v6/golang:1.22.0-alpine \
+  --build-arg MESHSPY_VERSION="$MESHSPY_VERSION" \
   .
 
 # 🚀 Multi-platform build for the other architectures
@@ -141,6 +160,7 @@ docker buildx build \
   --push \
   -t "${IMAGE}:${TAG}" \
   --build-arg BASE_IMAGE=golang:1.22-alpine \
+  --build-arg MESHSPY_VERSION="$MESHSPY_VERSION" \
   .
 
 # 🔗 Merge ARMv6 into the main manifest
